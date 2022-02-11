@@ -21,7 +21,7 @@ class ReplayQueue:
     maxQueueLength=100
 
 
-    def findNewReplays(self):
+    def findNewReplays(self, onlyValid=True):
         dustkidPage=urlopen("https://dustkid.com/")
         content=dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
@@ -36,6 +36,9 @@ class ReplayQueue:
 
         #converts this list of dicts to pandas dataframe
         replayFrame=DataFrame(replayList)
+
+        if onlyValid:
+            replayFrame.drop(replayFrame[replayFrame['validated']==0].index, inplace=True)
 
         return replayFrame
 
@@ -186,6 +189,8 @@ class Replay:
         else:
             print('No replay info provided')
             raise InvalidReplay
+
+        self.validated=metadata['validated']
 
         self.time=metadata['time']
 
