@@ -38,7 +38,7 @@ class ReplayQueue:
         replayFrame=DataFrame(replayList)
 
         if onlyValid:
-            replayFrame.drop(replayFrame[replayFrame['validated']==0].index, inplace=True)
+            replayFrame.drop(replayFrame[replayFrame['validated']!=1].index, inplace=True)
 
         return replayFrame
 
