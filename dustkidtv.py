@@ -1,13 +1,14 @@
 import time
+import json
 from subprocess import Popen, PIPE, STDOUT
 from replays import ReplayQueue, Replay, InvalidReplay
 
 
-
-localReplayTest='8528743.dfreplay'
-urlReplayTest="dustforce://replay/8528743"
-idReplayTest='8528743'
-
+def readDfPath(configFile='config.json'):
+    with open(configFile, 'r') as f:
+        conf=json.load(f)
+    dfPath=conf['dustmod']
+    return dfPath
 
 
 def runDustkidtv(keepgoing=True, dfPath="C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe"):
@@ -60,4 +61,6 @@ def checkQueue():
 
 if __name__ == '__main__' :
 
-    runDustkidtv()
+    dfPath=readDfPath()
+
+    runDustkidtv(dfPath=dfPath)

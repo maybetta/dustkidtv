@@ -1,5 +1,6 @@
 from urllib.request import urlopen
 from pandas import DataFrame, concat
+from random import randrange
 import json
 import os, sys
 
@@ -31,15 +32,21 @@ class ReplayQueue:
 
         replayListJson="["+content[start:end]+"]"
 
-        #to be gentle with dustkid.com
-        # with open("dfreplays.json") as f:
-        #     replayListJson=f.read()
-
         replayList=json.loads(replayListJson)
 
         #converts this list of dicts to pandas dataframe
         replayFrame=DataFrame(replayList)
 
+        return replayFrame
+
+
+    def getBackupQueue(self, queueFilename='replays.json'):
+
+        with open(queueFilename) as f:
+            replayListJson=f.read()
+
+        replayList=json.loads(replayListJson)
+        replayFrame=DataFrame(replayList)
         return replayFrame
 
 
@@ -96,10 +103,13 @@ class ReplayQueue:
             self.queue.drop(self.queue.index[0], inplace=True)
 
             self.queueId.pop(0)
-            return (self.current)
         else:
-            print("no more replays in queue")
-            raise InvalidReplay
+            #select random replay from backup queue
+            randId=randrange(len(self.backupQueue))
+            self.current=Replay(self.backupQueue.iloc[randId])
+
+        return (self.current)
+
 
 
     def __init__(self):
@@ -109,6 +119,7 @@ class ReplayQueue:
         self.sortReplays()
         self.queueId=self.getReplayId()
         self.current=None #Replay class
+        self.backupQueue=self.getBackupQueue()
 
 
 

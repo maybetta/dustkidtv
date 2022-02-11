@@ -3,16 +3,19 @@ from tkinter import Tk, Frame, Button, Label, Message, StringVar, BOTH, LEFT, NW
 from PIL import Image, ImageTk
 
 import time
+import json
 from subprocess import Popen, PIPE, STDOUT
 from replays import ReplayQueue, Replay, InvalidReplay
 
+import threading
 
-dfPath="C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe"
+# dfPath="C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe"
+thumbnail='dustkidtv-tashizuna.png'
 
 
 class Window(Frame):
 
-    img = Image.open('dustkidtv-tashizuna.png')
+    img = Image.open(thumbnail)
     imgSize = (382, 182)
     infoText = '''    Replay ID: %i
     Timestamp: %i
@@ -37,14 +40,30 @@ class Window(Frame):
 
     queueLength=0
 
-    keepgoing=True
+    keepgoing=False
+
+    replay_thread=None
+
+
+    def readConfig(self, configFile='config.json'):
+        with open(configFile, 'r') as f:
+            conf=json.load(f)
+        self.dfPath=conf['dustmod']
 
 
     def stop(self):
         self.keepgoing=False
+        self.replay_text.set('Waiting for replay to end...')
 
     def run(self):
-        with Popen(dfPath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
+        self.keepgoing=True
+        self.replay_text.set('Starting Dustforce...')
+        if self.replay_thread is None:
+            self.replay_thread=threading.Thread(target=self.run_thread, daemon=True)
+            self.replay_thread.start()
+
+    def run_thread(self):
+        with Popen(self.dfPath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
             time.sleep(5)
 
             queue=ReplayQueue()
@@ -72,12 +91,13 @@ class Window(Frame):
 
                     #update queues
                     queue.update(rep.replayId)
-
                     self.queueLength=queue.length
-
-
+            self.replay_text.set('Thread Stopped')
+            self.replay_thread = None
 
     def __init__(self, master):
+        self.readConfig()
+
         Frame.__init__(self, master)
         self.master = master
 
@@ -94,7 +114,7 @@ class Window(Frame):
         self.image_label.pack(anchor=NW)
 
         self.replay_text = StringVar()
-        self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.realTime, self.queueLength))
+        self.replay_text.set('Press Start')
         self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=self.imgSize[0])
         self.message.pack(anchor=NW)
 
