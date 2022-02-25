@@ -2,6 +2,6 @@ __pycache__
 twitch_config.json
 *.dfreplay
 replayinfo.txt
-config.json
 
 ideas.txt
+info.py

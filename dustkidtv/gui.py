@@ -1,16 +1,15 @@
 import os
+import time
+import json
+import threading
+from subprocess import Popen, PIPE, STDOUT
 from tkinter import Tk, Frame, Button, Label, Message, StringVar, BOTH, LEFT, NW, N, E, S, W
 from PIL import Image, ImageTk
 
-import time
-import json
-from subprocess import Popen, PIPE, STDOUT
-from replays import ReplayQueue, Replay, InvalidReplay
+from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 
-import threading
 
-# dfPath="C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe"
-thumbnail='dustkidtv-tashizuna.png'
+thumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
 
 
 class Window(Frame):
@@ -55,12 +54,14 @@ class Window(Frame):
         self.keepgoing=False
         self.replay_text.set('Waiting for replay to end...')
 
+
     def run(self):
         self.keepgoing=True
         self.replay_text.set('Starting Dustforce...')
         if self.replay_thread is None:
             self.replay_thread=threading.Thread(target=self.run_thread, daemon=True)
             self.replay_thread.start()
+
 
     def run_thread(self):
         with Popen(self.dfPath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
@@ -86,14 +87,17 @@ class Window(Frame):
                     self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.realTime, self.queueLength))
 
                     #show replay
-                    rep.openReplay(rep.getReplayUri())
+                    # replayUri=rep.getReplayUri()
+                    rep.openReplay(rep.replayPath)
                     time.sleep(rep.realTime)
 
                     #update queues
                     queue.update(rep.replayId)
                     self.queueLength=queue.length
+
             self.replay_text.set('Thread Stopped')
             self.replay_thread = None
+
 
     def __init__(self, master):
         self.readConfig()
@@ -124,6 +128,7 @@ class Window(Frame):
         self.button=Button(left, text='Stop', command=lambda: self.stop())
         self.button.pack(anchor=NW)
 
+
 def main():
 
     root=Tk()
@@ -131,8 +136,3 @@ def main():
     window=Window(root)
 
     root.mainloop()
-
-
-if __name__ == '__main__' :
-
-    main()

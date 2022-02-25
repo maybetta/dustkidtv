@@ -1,6 +1,7 @@
-from urllib.request import urlopen
+from urllib.request import urlopen, urlretrieve
 from pandas import DataFrame, concat
 from random import randrange
+from subprocess import Popen
 import json
 import os, sys
 
@@ -43,7 +44,7 @@ class ReplayQueue:
         return replayFrame
 
 
-    def getBackupQueue(self, queueFilename='replays.json'):
+    def getBackupQueue(self, queueFilename='dustkidtv/replays.json'):
 
         with open(queueFilename) as f:
             replayListJson=f.read()
@@ -133,7 +134,7 @@ class Replay:
 
     startDelay=1112+3000
 
-    def openReplay(self,url):
+    def openReplay(self, url):
         if sys.platform=='win32':
             os.startfile(url)
         elif sys.platform=='darwin':
@@ -144,6 +145,11 @@ class Replay:
             except OSError:
                 print('Can\'t open dustforce URI: ' + url)
                 sys.exit()
+
+    def downloadReplay(self):
+        path='dfreplays/'+str(self.replayId)+'.dfreplay'
+        urlretrieve("https://dustkid.com/backend8/get_replay.php?replay="+str(self.replayId), path)
+        return path
 
     def getReplayUri(self):
         return "dustforce://replay/" + str(self.replayId)
@@ -170,6 +176,7 @@ class Replay:
             metadata=json.loads(content)
             return metadata
 
+
     def saveInfoToFile(self):
         out='%s %s %s in %.3fs'%(self.levelname, self.completion, self.finesse, self.username, rep.time/1000.)
         with open('replayinfo.txt', 'w') as f:
@@ -194,8 +201,11 @@ class Replay:
 
         self.time=metadata['time']
 
+        #download replay from dustkid
+        self.replayPath=self.downloadReplay()
+
         #estimation of replay length in real time
-        self.deathDelay=0 #TODO
+        self.deathDelay=0 #TODO self.computeDeaths()
         self.realTime=(self.time+self.startDelay+self.deathDelay)/1000.
 
         self.character=metadata['time']
