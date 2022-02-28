@@ -136,6 +136,8 @@ class Replay:
 
     def openReplay(self, url):
         if sys.platform=='win32':
+            if not (url.startswith('http://') or url.startswith('https://')):
+                url=url.replace('/','\\')
             os.startfile(url)
         elif sys.platform=='darwin':
             Popen(['open', url])
