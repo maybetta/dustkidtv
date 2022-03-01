@@ -4,10 +4,15 @@ from random import randrange
 from subprocess import Popen
 import json
 import os, sys
+import dustmaker
+import numpy as np
+from dustkidtv.maps import STOCK_MAPS, CMP_MAPS
 
 
 
-
+TILE_WIDTH=48
+START_DELAY=1112
+DEATH_DELAY=1000
 
 class InvalidReplay(Exception):
     pass
@@ -132,8 +137,6 @@ class ReplayQueue:
 
 class Replay:
 
-    startDelay=1112+3000
-
     def openReplay(self, url):
         if sys.platform=='win32':
             if not (url.startswith('http://') or url.startswith('https://')):
@@ -179,6 +182,106 @@ class Replay:
             return metadata
 
 
+    def getReplayFrames(self):
+        with dustmaker.DFReader(open(self.replayPath, "rb")) as reader:
+            replay = reader.read_replay()
+
+        entity_data = replay.get_player_entity_data()
+        if entity_data is None:
+            print("No desync data for player :(")
+            replayFrames=np.empty(0)
+
+        else:
+            nframes=len(entity_data.frames)
+            replayFrames=np.empty([nframes, 5])
+            i=0
+            for frame in entity_data.frames:
+                replayFrames[i]=[frame.frame, frame.x_pos, frame.y_pos, frame.x_speed, frame.y_speed]
+                i+=1
+
+        return replayFrames
+
+
+    def estimateDeaths(self):
+
+        def doBBoxDistance(point, box):
+            x, y=point
+            x1, y1, x2, y2=box
+
+            inXRange=(x>=x1 and x<=x2)
+            inYRange=(y>=y1 and y<=y2)
+
+            dx=np.minimum(np.abs(x-x1), np.abs(x-x2))
+            dy=np.minimum(np.abs(y-y1), np.abs(y-y2))
+
+            if inXRange and inYRange:
+                d=0.
+            elif inXRange:
+                d=dy
+            elif inYRange:
+                d=dx
+            else:
+                d=np.sqrt(dx*dx+dy*dy)
+            return d
+
+
+        def compareToCheckpoints(candidates, coords, checkpoints, kTiles=4):
+            estimatedDeathIdx=[]
+            for idx in candidates:
+                coord=coords[idx]
+                for cp in checkpoints:
+                    distance=np.sqrt(np.sum((coord-cp)**2))
+                    if distance<(kTiles*TILE_WIDTH):
+                        estimatedDeathIdx.append(idx)
+                        break
+            return np.array(estimatedDeathIdx)
+
+
+        def getCandidates(err, kTiles=2):
+            candidates=np.where(err>kTiles*TILE_WIDTH)[0]
+            return candidates
+
+
+        replayFrames=self.getReplayFrames()
+
+        nframes=len(replayFrames)
+
+        frames=replayFrames[:,0]
+        lastFrame=int(frames[-1])
+
+        t=frames/50.
+        coords=replayFrames[:,[1,2]]
+        velocity=replayFrames[:,[3,4]]
+
+        checkpoints=self.levelFile.getCheckpointsCoordinates()
+        ncheckpoints=len(checkpoints)
+
+        deltat=t[1:]-t[:-1]
+
+        estimatedCoords=np.empty((nframes, 2))
+        estimatedCoords[0]=coords[0]
+        estimatedCoords[1:]=coords[:-1]+velocity[:-1]*(deltat).reshape((nframes-1,1))
+
+        estimatedCoords2=np.empty((nframes, 2))
+        estimatedCoords2[0]=coords[0]
+        estimatedCoords2[1:]=coords[:-1]+velocity[1:]*(deltat).reshape((nframes-1,1))
+
+        estimatedBox=np.c_[np.minimum(estimatedCoords[:,0], estimatedCoords2[:,0]),np.minimum(estimatedCoords[:,1], estimatedCoords2[:,1]), np.maximum(estimatedCoords[:,0], estimatedCoords2[:,0]), np.maximum(estimatedCoords[:,1], estimatedCoords2[:,1])] # box boundary defined as [[x1, y1, x2, y2]]
+
+        err=np.zeros(nframes, dtype=float)
+        for frame in range(nframes):
+            point=coords[frame]
+            box=estimatedBox[frame]
+            d=doBBoxDistance(point, box)
+            err[frame]=d
+
+        candidates=getCandidates(err)
+        estimatedDeathIdx=compareToCheckpoints(candidates, coords, checkpoints)
+        ndeaths=len(estimatedDeathIdx)
+
+        return ndeaths
+
+
     def saveInfoToFile(self):
         out='%s %s %s in %.3fs'%(self.levelname, self.completion, self.finesse, self.username, rep.time/1000.)
         with open('replayinfo.txt', 'w') as f:
@@ -206,9 +309,7 @@ class Replay:
         #download replay from dustkid
         self.replayPath=self.downloadReplay()
 
-        #estimation of replay length in real time
-        self.deathDelay=0 #TODO self.computeDeaths()
-        self.realTime=(self.time+self.startDelay+self.deathDelay)/1000.
+        self.numplayers=metadata['numplayers']
 
         self.character=metadata['time']
 
@@ -218,6 +319,69 @@ class Replay:
         self.completion=scores[self.completionNum-1]
         self.finesse=scores[self.finesseNum-1]
 
+        self.apple=metadata['apples']
+
         self.timestamp=metadata['timestamp']
         self.username=metadata['username']
-        self.levelname=metadata['levelname']
+        self.levelname=metadata['levelname'] #public level name
+        self.level=metadata['level'] #in game level name
+
+        self.levelFile=Level(self.level)
+        self.thumbnail=self.levelFile.getThumbnail()
+
+        #estimation of replay length in real time
+        if self.numplayers>1:
+            self.deaths=0
+        else:
+            self.deaths=self.estimateDeaths()
+        self.realTime=(self.time+START_DELAY+self.deaths*DEATH_DELAY)/1000.
+
+
+
+class Level:
+
+    def downloadLevel(self):
+        path='dflevels/'+str(self.name)
+        urlretrieve("https://dustkid.com/backend8/level.php?level="+str(self.name), path)
+        return path
+
+
+    def getCheckpointsCoordinates(self):
+        checkpoints=[]
+
+        with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
+            levelFile=reader.read_level()
+            entities=levelFile.entities
+
+            for entity in entities.values():
+                if isinstance(entity[2], dustmaker.entity.CheckPoint):
+                    checkpoints.append([entity[0], entity[1]])
+
+        return np.array(checkpoints)
+
+
+    def getThumbnail(self):
+        with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
+            level=reader.read_level()
+            thumbnail=level.sshot
+
+        return thumbnail
+
+
+    def __init__(self, level):
+        self.dfPath=os.environ['DFPATH']
+
+        self.name=level
+
+        isStock=level in STOCK_MAPS
+        isCmp=level in CMP_MAPS
+        isInfini=level=='exec func ruin user'
+
+        if isStock:
+            self.levelPath=self.dfPath+"/content/levels2/"+level
+        elif isCmp:
+            self.levelPath=self.dfPath+"/content/levels3/"+level
+        elif isInfini:
+            self.levelPath='dflevels/infinidifficult_fixed'
+        else:
+            self.levelPath=self.downloadLevel()

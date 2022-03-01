@@ -1,4 +1,5 @@
 import os
+import io
 import time
 import json
 import threading
@@ -9,13 +10,20 @@ from PIL import Image, ImageTk
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 
 
-thumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
+dustkidtvThumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
+srank='dustkidtv/img/dfsrank.png'
+arank='dustkidtv/img/dfarank.png'
+brank='dustkidtv/img/dfbrank.png'
+crank='dustkidtv/img/dfcrank.png'
+drank='dustkidtv/img/dfdrank.png'
+apple='dustkidtv/img/dfapple.png'
+star='dustkidtv/img/dfstar.png'
 
 
 class Window(Frame):
 
-    img = Image.open(thumbnail)
-    imgSize = (382, 182)
+    thumbnail = Image.open(dustkidtvThumbnail)
+    thumbnailSize = (382, 182)
     infoText = '''    Replay ID: %i
     Timestamp: %i
     Username: %s
@@ -23,6 +31,7 @@ class Window(Frame):
     Time: %.3f s
     Completion: %s
     Finesse: %s
+    Est. Deaths: %i
     Real time: %.3f s
 
     Queue length: %i
@@ -47,7 +56,12 @@ class Window(Frame):
     def readConfig(self, configFile='config.json'):
         with open(configFile, 'r') as f:
             conf=json.load(f)
-        self.dfPath=conf['dustmod']
+
+        self.dfPath=conf['path']
+        self.dfExePath=conf['dustmod']
+
+        os.environ['DFPATH']=self.dfPath
+        os.environ['DFEXE']=self.dfExePath
 
 
     def stop(self):
@@ -64,8 +78,8 @@ class Window(Frame):
 
 
     def run_thread(self):
-        with Popen(self.dfPath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
-            time.sleep(5)
+        with Popen(self.dfExePath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
+            time.sleep(2)
 
             queue=ReplayQueue()
             self.queueLength=queue.length
@@ -79,15 +93,18 @@ class Window(Frame):
                     self.timestamp=rep.timestamp
                     self.username=rep.username
                     self.levelname=rep.levelname
-                    self.time=rep.time/1000
+                    self.time=rep.time/1000.
                     self.completion=rep.completion
                     self.finesse=rep.finesse
+                    self.deaths=rep.deaths
                     self.realTime=rep.realTime
+                    self.thumbnail=rep.thumbnail
 
-                    self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.realTime, self.queueLength))
+                    #update replay info and thumbnail
+                    # self.image_label.image=ImageTk.PhotoImage(Image.open(io.BytesIO(self.thumbnail))) #TODO overlay score rank
+                    self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.deaths, self.realTime, self.queueLength))
 
                     #show replay
-                    # replayUri=rep.getReplayUri()
                     rep.openReplay(rep.replayPath)
                     time.sleep(rep.realTime)
 
@@ -112,14 +129,14 @@ class Window(Frame):
         left = Frame(self)
         left.grid(row=0, column=0, sticky=(N, E, S, W))
 
-        photo = ImageTk.PhotoImage(self.img)
+        photo = ImageTk.PhotoImage(self.thumbnail)
         self.image_label = Label(left, image=photo)
         self.image_label.image = photo
         self.image_label.pack(anchor=NW)
 
         self.replay_text = StringVar()
         self.replay_text.set('Press Start')
-        self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=self.imgSize[0])
+        self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=self.thumbnailSize[0])
         self.message.pack(anchor=NW)
 
         self.button=Button(left, text='Start', command=lambda: self.run())

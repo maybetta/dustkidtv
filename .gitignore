@@ -1,7 +1,9 @@
 __pycache__
 twitch_config.json
 *.dfreplay
-replayinfo.txt
+dflevels/*
+!dflevels/dflevels.txt
+!dflevels/infinidifficult_fixed
 
 ideas.txt
 info*
