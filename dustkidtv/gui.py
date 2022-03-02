@@ -9,6 +9,9 @@ from PIL import Image, ImageTk
 
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 
+THUMBNAIL_SIZE=(382, 182)
+ICON_SIZE=(32, 32)
+PAD=3
 
 dustkidtvThumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
 srank='dustkidtv/img/dfsrank.png'
@@ -22,8 +25,23 @@ star='dustkidtv/img/dfstar.png'
 
 class Window(Frame):
 
-    thumbnail = Image.open(dustkidtvThumbnail)
-    thumbnailSize = (382, 182)
+    dustkidImg=Image.open(dustkidtvThumbnail)
+    thumbnail=dustkidImg.copy()
+
+    srankImg=Image.open(srank)
+    arankImg=Image.open(arank)
+    brankImg=Image.open(brank)
+    crankImg=Image.open(crank)
+    drankImg=Image.open(drank)
+    appleImg=Image.open(apple)
+    starImg=Image.open(star)
+    scores=[drankImg, crankImg, brankImg, arankImg, srankImg]
+
+    posLowRight2=(THUMBNAIL_SIZE[0]-ICON_SIZE[0]-PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
+    posLowRight1=(posLowRight2[0]-ICON_SIZE[0]-PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
+    posLowLeft1=(PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
+    posLowLeft2=(posLowLeft1[0]+PAD+ICON_SIZE[0], THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
+
     infoText = '''    Replay ID: %i
     Timestamp: %i
     Username: %s
@@ -98,10 +116,32 @@ class Window(Frame):
                     self.finesse=rep.finesse
                     self.deaths=rep.deaths
                     self.realTime=rep.realTime
-                    self.thumbnail=rep.thumbnail
 
-                    #update replay info and thumbnail
-                    # self.image_label.image=ImageTk.PhotoImage(Image.open(io.BytesIO(self.thumbnail))) #TODO overlay score rank
+                    #update thumbnail
+                    if rep.thumbnail:
+                        img=Image.open(io.BytesIO(rep.thumbnail))
+                    else:
+                        img=self.dustkidImg.copy()
+                    rankCompletionImg=self.scores[rep.completionNum-1]
+                    rankFinesseImg=self.scores[rep.finesseNum-1]
+
+                    img.paste(rankCompletionImg, self.posLowRight1, rankCompletionImg)
+                    img.paste(rankFinesseImg, self.posLowRight2, rankFinesseImg)
+                    if rep.apple and rep.isPB:
+                        img.paste(self.starImg, self.posLowLeft1, self.starImg)
+                        img.paste(self.appleImg, self.posLowLeft2, self.appleImg)
+                    elif rep.isPB:
+                        img.paste(self.starImg, self.posLowLeft1, self.starImg)
+                    elif rep.apple:
+                        img.paste(self.appleImg, self.posLowLeft1, self.appleImg)
+
+                    self.thumbnail=img
+
+                    photoTk = ImageTk.PhotoImage(self.thumbnail)
+                    self.image_label.configure(image=photoTk)
+                    self.image_label.image=photoTk
+
+                    #update replay info
                     self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.deaths, self.realTime, self.queueLength))
 
                     #show replay
@@ -129,14 +169,14 @@ class Window(Frame):
         left = Frame(self)
         left.grid(row=0, column=0, sticky=(N, E, S, W))
 
-        photo = ImageTk.PhotoImage(self.thumbnail)
-        self.image_label = Label(left, image=photo)
-        self.image_label.image = photo
+        photoTk = ImageTk.PhotoImage(self.thumbnail)
+        self.image_label=Label(left, image=photoTk)
+        self.image_label.image=photoTk
         self.image_label.pack(anchor=NW)
 
         self.replay_text = StringVar()
         self.replay_text.set('Press Start')
-        self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=self.thumbnailSize[0])
+        self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=THUMBNAIL_SIZE[0])
         self.message.pack(anchor=NW)
 
         self.button=Button(left, text='Start', command=lambda: self.run())

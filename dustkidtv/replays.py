@@ -3,10 +3,11 @@ from pandas import DataFrame, concat
 from random import randrange
 from subprocess import Popen
 import json
+import re
 import os, sys
 import dustmaker
 import numpy as np
-from dustkidtv.maps import STOCK_MAPS, CMP_MAPS
+from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL
 
 
 
@@ -320,17 +321,23 @@ class Replay:
         self.finesse=scores[self.finesseNum-1]
 
         self.apple=metadata['apples']
+        self.isPB=False #TODO
 
         self.timestamp=metadata['timestamp']
         self.username=metadata['username']
         self.levelname=metadata['levelname'] #public level name
         self.level=metadata['level'] #in game level name
 
+        print('\nopening replay %i of %s'%(self.replayId, self.level))
+
         self.levelFile=Level(self.level)
-        self.thumbnail=self.levelFile.getThumbnail()
+        if self.levelFile.hasThumbnail:
+            self.thumbnail=self.levelFile.getThumbnail()
+        else:
+            self.thumbnail=None
 
         #estimation of replay length in real time
-        if self.numplayers>1:
+        if self.numplayers>1 or not self.levelFile.levelPath: #can't estimate deaths on dustkid daily
             self.deaths=0
         else:
             self.deaths=self.estimateDeaths()
@@ -342,7 +349,8 @@ class Level:
 
     def downloadLevel(self):
         path='dflevels/'+str(self.name)
-        urlretrieve("https://dustkid.com/backend8/level.php?level="+str(self.name), path)
+        id=re.match('\d+', self.name[::-1]).group()[::-1]
+        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%d"+str(id), path)
         return path
 
 
@@ -376,12 +384,21 @@ class Level:
         isStock=level in STOCK_MAPS
         isCmp=level in CMP_MAPS
         isInfini=level=='exec func ruin user'
+        isDaily=re.fullmatch('random\d+', level)
 
         if isStock:
             self.levelPath=self.dfPath+"/content/levels2/"+level
+            self.hasThumbnail=level in MAPS_WITH_THUMBNAIL
         elif isCmp:
             self.levelPath=self.dfPath+"/content/levels3/"+level
+            self.hasThumbnail=True
         elif isInfini:
             self.levelPath='dflevels/infinidifficult_fixed'
+            self.hasThumbnail=False
+        elif isDaily:
+            self.levelPath=None
+            self.hasThumbnail=False
+            print("can't download dustkid daily")
         else:
             self.levelPath=self.downloadLevel()
+            self.hasThumbnail=True
