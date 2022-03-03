@@ -20,7 +20,7 @@ It also needs `dustmaker` version >= 1.1.1, which can be obtained from [https://
 
 ## Usage
 
-This assumes that you are using Dustmod ([https://dustmod.com/](https://dustmod.com/)).
+This assumes that you are using Dustmod ([http://dustmod.com/](https://dustmod.com/)).
 
 First, set file associations in Dustmod (Dustmod → About → Set file associations).
 
