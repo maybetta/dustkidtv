@@ -5,13 +5,17 @@ import json
 import threading
 from subprocess import Popen, PIPE, STDOUT
 from tkinter import Tk, Frame, Button, Label, Message, StringVar, BOTH, LEFT, NW, N, E, S, W
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFont
+from textwrap import wrap
 
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 
 THUMBNAIL_SIZE=(382, 182)
 ICON_SIZE=(32, 32)
 PAD=3
+MAX_TEXT_LEN=26
+BLACK=(0,0,0)
+WHITE=(255,255,255)
 
 dustkidtvThumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
 srank='dustkidtv/img/dfsrank.png'
@@ -21,12 +25,15 @@ crank='dustkidtv/img/dfcrank.png'
 drank='dustkidtv/img/dfdrank.png'
 apple='dustkidtv/img/dfapple.png'
 star='dustkidtv/img/dfstar.png'
+freesans="dustkidtv/img/FreeSansBold.ttf"
 
 
 class Window(Frame):
 
     dustkidImg=Image.open(dustkidtvThumbnail)
     thumbnail=dustkidImg.copy()
+
+    font=ImageFont.truetype(freesans, 20)
 
     srankImg=Image.open(srank)
     arankImg=Image.open(arank)
@@ -134,6 +141,14 @@ class Window(Frame):
                         img.paste(self.starImg, self.posLowLeft1, self.starImg)
                     elif rep.apple:
                         img.paste(self.appleImg, self.posLowLeft1, self.appleImg)
+
+                    draw=ImageDraw.Draw(img)
+                    text='\n'.join(wrap(rep.levelname, MAX_TEXT_LEN))
+                    draw.multiline_text((PAD-1, PAD), text, font=self.font, fill=BLACK)
+                    draw.multiline_text((PAD+1, PAD), text, font=self.font, fill=BLACK)
+                    draw.multiline_text((PAD, PAD-1), text, font=self.font, fill=BLACK)
+                    draw.multiline_text((PAD, PAD+1), text, font=self.font, fill=BLACK)
+                    draw.multiline_text((PAD, PAD), text, font=self.font, fill=WHITE)
 
                     self.thumbnail=img
 

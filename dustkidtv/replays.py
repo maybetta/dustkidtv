@@ -155,6 +155,8 @@ class Replay:
 
     def downloadReplay(self):
         path='dfreplays/'+str(self.replayId)+'.dfreplay'
+        if os.path.isfile(path):
+            return path
         urlretrieve("https://dustkid.com/backend8/get_replay.php?replay="+str(self.replayId), path)
         return path
 
@@ -313,7 +315,8 @@ class Replay:
 
         self.numplayers=metadata['numplayers']
 
-        self.character=metadata['time']
+        self.characterNum=metadata['character']
+        characters=["Dustman", "Dustgirl", "Dustkid", "Dustworth"]
 
         self.completionNum=metadata['score_completion']
         self.finesseNum=metadata['score_finesse']
@@ -322,7 +325,7 @@ class Replay:
         self.finesse=scores[self.finesseNum-1]
 
         self.apple=metadata['apples']
-        self.isPB=False #TODO
+        self.isPB=metadata['pb']
 
         self.timestamp=metadata['timestamp']
         self.username=metadata['username']
