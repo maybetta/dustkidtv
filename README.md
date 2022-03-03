@@ -36,12 +36,12 @@ Find your Dustforce game folder. If you are using the Steam version, it will loo
 Run `main.py` to launch Dustkid TV.
 
 
-# Self-contained executable
+## Self-contained executable
 
 Optionally, `build.py` uses `pyinstaller` to create a standalone executable, which can be used on systems where Python and the libraries listed above are not available.
 
 
-# Notes
+## Notes
 
 Dustkid Daily replays will be played incorrectly if you have not downloaded/played today's daily. Access Dustkid Daily in the Dustmod Community Nexus to fix them.
 
