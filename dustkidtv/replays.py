@@ -2,12 +2,13 @@ from urllib.request import urlopen, urlretrieve
 from pandas import DataFrame, concat
 from random import randrange
 from subprocess import Popen
+from PIL import Image
 import json
 import re
 import os, sys
 import dustmaker
 import numpy as np
-from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL
+from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
 
 
 
@@ -349,8 +350,11 @@ class Level:
 
     def downloadLevel(self):
         path='dflevels/'+str(self.name)
+        if os.path.isfile(path):
+            return path
         id=re.match('\d+', self.name[::-1]).group()[::-1]
-        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%d"+str(id), path)
+        print('downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s"%id)
+        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s"%id, path)
         return path
 
 
@@ -369,6 +373,12 @@ class Level:
 
 
     def getThumbnail(self):
+
+        if self.isStock:
+            if self.hasLevelIcon:
+                thumbnail=Image.open('dustkidtv/img/icons/%s.png'%self.name)
+                return thumbnail.copy()
+
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
             level=reader.read_level()
             thumbnail=level.sshot
@@ -381,21 +391,23 @@ class Level:
 
         self.name=level
 
-        isStock=level in STOCK_MAPS
-        isCmp=level in CMP_MAPS
-        isInfini=level=='exec func ruin user'
-        isDaily=re.fullmatch('random\d+', level)
+        self.isStock=level in STOCK_MAPS
+        self.isCmp=level in CMP_MAPS
+        self.isInfini=level=='exec func ruin user'
+        self.isDaily=re.fullmatch('random\d+', level)
 
-        if isStock:
+        if self.isStock:
             self.levelPath=self.dfPath+"/content/levels2/"+level
-            self.hasThumbnail=level in MAPS_WITH_THUMBNAIL
-        elif isCmp:
+            self.hasLevelThumbnail=(level in MAPS_WITH_THUMBNAIL)
+            self.hasLevelIcon=(level in MAPS_WITH_ICON)
+            self.hasThumbnail=self.hasLevelThumbnail or self.hasLevelIcon
+        elif self.isCmp:
             self.levelPath=self.dfPath+"/content/levels3/"+level
             self.hasThumbnail=True
-        elif isInfini:
+        elif self.isInfini:
             self.levelPath='dflevels/infinidifficult_fixed'
             self.hasThumbnail=False
-        elif isDaily:
+        elif self.isDaily:
             self.levelPath=None
             self.hasThumbnail=False
             print("can't download dustkid daily")
