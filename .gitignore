@@ -1,6 +1,10 @@
 __pycache__
 .gitignore
 
+dist/
+build/
+*.spec
+
 *.dfreplay
 dflevels/*
 !dflevels/dflevels.txt
