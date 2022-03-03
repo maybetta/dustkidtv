@@ -17,15 +17,15 @@ MAX_TEXT_LEN=26
 BLACK=(0,0,0)
 WHITE=(255,255,255)
 
-dustkidtvThumbnail='dustkidtv/img/dustkidtv-tashizuna.png'
-srank='dustkidtv/img/dfsrank.png'
-arank='dustkidtv/img/dfarank.png'
-brank='dustkidtv/img/dfbrank.png'
-crank='dustkidtv/img/dfcrank.png'
-drank='dustkidtv/img/dfdrank.png'
-apple='dustkidtv/img/dfapple.png'
-star='dustkidtv/img/dfstar.png'
-freesans="dustkidtv/img/FreeSansBold.ttf"
+dustkidtvThumbnail='dustkidtv/assets/dustkidtv-tashizuna.png'
+srank='dustkidtv/assets/dfsrank.png'
+arank='dustkidtv/assets/dfarank.png'
+brank='dustkidtv/assets/dfbrank.png'
+crank='dustkidtv/assets/dfcrank.png'
+drank='dustkidtv/assets/dfdrank.png'
+apple='dustkidtv/assets/dfapple.png'
+star='dustkidtv/assets/dfstar.png'
+freesans="dustkidtv/assets/FreeSansBold.ttf"
 
 
 class Window(Frame):

@@ -1,5 +1,6 @@
 __pycache__
-twitch_config.json
+.gitignore
+
 *.dfreplay
 dflevels/*
 !dflevels/dflevels.txt

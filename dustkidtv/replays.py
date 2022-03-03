@@ -51,7 +51,7 @@ class ReplayQueue:
         return replayFrame
 
 
-    def getBackupQueue(self, queueFilename='dustkidtv/replays.json'):
+    def getBackupQueue(self, queueFilename='dustkidtv/assets/replays.json'):
 
         with open(queueFilename) as f:
             replayListJson=f.read()
@@ -379,7 +379,7 @@ class Level:
 
         if self.isStock:
             if self.hasLevelIcon:
-                thumbnail=Image.open('dustkidtv/img/icons/%s.png'%self.name)
+                thumbnail=Image.open('dustkidtv/assets/icons/%s.png'%self.name)
                 return thumbnail.copy()
 
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
@@ -408,7 +408,7 @@ class Level:
             self.levelPath=self.dfPath+"/content/levels3/"+level
             self.hasThumbnail=True
         elif self.isInfini:
-            self.levelPath='dflevels/infinidifficult_fixed'
+            self.levelPath='dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail=False
         elif self.isDaily:
             self.levelPath=None
