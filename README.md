@@ -5,7 +5,7 @@ Plays recent Dustforce replays from dustkid.com
 
 ## Dependencies
 
-Python 3 ([https://www.python.org/downloads/](https://www.python.org/downloads/)) and the following libraries are needed to run this program:
+ [Python 3](https://www.python.org/downloads/) and the following libraries are needed to run this program:
 
 ```
 pillow
@@ -15,12 +15,12 @@ pandas
 
 Install them with `pip install pillow numpy pandas` or any other preferred method.
 
-It also needs `dustmaker` version >= 1.1.1, which can be obtained from [https://github.com/msg555/dustmaker](https://github.com/msg555/dustmaker): download [this](https://github.com/msg555/dustmaker/archive/refs/heads/main.zip) and install with `python setup.py install`.
+It also needs [dustmaker](https://github.com/msg555/dustmaker) version >= 1.1.1: download [this](https://github.com/msg555/dustmaker/archive/refs/heads/main.zip) and install with `python setup.py install`.
 
 
 ## Usage
 
-This assumes that you are using Dustmod ([http://dustmod.com/](https://dustmod.com/)).
+This assumes that you are using [Dustmod](https://dustmod.com/).
 
 First, set file associations in Dustmod (Dustmod → About → Set file associations).
 
