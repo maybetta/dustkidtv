@@ -33,12 +33,16 @@ Find your Dustforce game folder. If you are using the Steam version, it will loo
 }
 ```
 
+Alternatively, you can set the `DFPATH` and `DFEXE` environmental variables.
+
 Run `main.py` to launch Dustkid TV.
 
 
 ## Self-contained executable
 
 Optionally, `build.py` uses `pyinstaller` to create a standalone executable, which can be used on systems where Python and the libraries listed above are not available.
+
+To use the standalone executable, put the path to your Dustforce game folder and Dustmod executable in `config.json` as explained above, and run `main.exe`.
 
 
 ## Notes

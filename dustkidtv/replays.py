@@ -2,7 +2,6 @@ from urllib.request import urlopen, urlretrieve
 from pandas import DataFrame, concat
 from random import randrange
 from subprocess import Popen
-from PIL import Image
 import json
 import re
 import os, sys
@@ -379,8 +378,10 @@ class Level:
 
         if self.isStock:
             if self.hasLevelIcon:
-                thumbnail=Image.open('dustkidtv/assets/icons/%s.png'%self.name)
-                return thumbnail.copy()
+                imgPath='dustkidtv/assets/icons/%s.png'%self.name
+                with open(imgPath, 'rb') as f:
+                    thumbnail=f.read()
+                return thumbnail
 
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
             level=reader.read_level()

@@ -79,14 +79,21 @@ class Window(Frame):
 
 
     def readConfig(self, configFile='config.json'):
-        with open(configFile, 'r') as f:
-            conf=json.load(f)
+        try:
 
-        self.dfPath=conf['path']
-        self.dfExePath=conf['dustmod']
+            self.dfPath=os.environ['DFPATH']
+            self.dfExePath=os.environ['DFEXE']
 
-        os.environ['DFPATH']=self.dfPath
-        os.environ['DFEXE']=self.dfExePath
+        except KeyError:
+
+            with open(configFile, 'r') as f:
+                conf=json.load(f)
+
+            self.dfPath=conf['path']
+            self.dfExePath=conf['dustmod']
+
+            os.environ['DFPATH']=self.dfPath
+            os.environ['DFEXE']=self.dfExePath
 
 
     def stop(self):
