@@ -50,7 +50,7 @@ class Window(Frame):
     posLowLeft2=(posLowLeft1[0]+PAD+ICON_SIZE[0], THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
 
     infoText = '''    Replay ID: %i
-    Timestamp: %i
+    Timestamp: %s
     Username: %s
     Level name: %s
     Time: %.3f s
@@ -63,7 +63,7 @@ class Window(Frame):
     '''
 
     replayId=0
-    timestamp=0
+    timestamp=''
     username=''
     levelname=''
     time=0
@@ -110,7 +110,6 @@ class Window(Frame):
 
 
     def run_thread(self):
-        with Popen(self.dfExePath, stdout=PIPE, stderr=STDOUT, stdin=PIPE) as df:
             time.sleep(2)
 
             queue=ReplayQueue()
@@ -122,7 +121,7 @@ class Window(Frame):
                     rep=queue.next()
 
                     self.replayId=rep.replayId
-                    self.timestamp=rep.timestamp
+                    self.timestamp=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rep.timestamp))
                     self.username=rep.username
                     self.levelname=rep.levelname
                     self.time=rep.time/1000.

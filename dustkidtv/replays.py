@@ -1,3 +1,4 @@
+import certifi
 from urllib.request import urlopen, urlretrieve
 from pandas import DataFrame, concat
 from random import randrange
@@ -61,7 +62,7 @@ class ReplayQueue:
 
 
     def computeReplayPriority(self, metadata):
-        return metadata["time"] #TODO maybe add a rank score
+        return metadata["time"]
 
 
     def sortReplays(self):
@@ -331,7 +332,7 @@ class Replay:
         self.levelname=metadata['levelname'] #public level name
         self.level=metadata['level'] #in game level name
 
-        print('\nopening replay %i of %s'%(self.replayId, self.level))
+        print('\nopening replay %i of %s (%.3f s)'%(self.replayId, self.level, self.time/1000.))
 
         self.levelFile=Level(self.level)
         if self.levelFile.hasThumbnail:

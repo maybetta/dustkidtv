@@ -11,6 +11,7 @@ Plays recent Dustforce replays from dustkid.com
 pillow
 numpy
 pandas
+certifi
 ```
 
 Install them with `pip install pillow numpy pandas` or any other preferred method.
