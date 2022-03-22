@@ -322,7 +322,7 @@ MAPS_WITH_ICON=[
 'tunnel',
 'vat',
 'venom',
-'wiring',
+'wiringfixed',
 'yottadifficult',
 'zettadifficult',
 ]
