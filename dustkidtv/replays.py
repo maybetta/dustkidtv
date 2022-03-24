@@ -192,8 +192,7 @@ class Replay:
 
         entity_data = replay.get_player_entity_data()
         if entity_data is None:
-            print("No desync data for player :(")
-            replayFrames=np.empty(0)
+            replayFrames=None
 
         else:
             nframes=len(entity_data.frames)
@@ -247,6 +246,12 @@ class Replay:
 
 
         replayFrames=self.getReplayFrames()
+        if replayFrames is None or replayFrames.shape[0]<2:
+            print("Not enough desync data to estimate deaths")
+            return 0
+
+        if replayFrames.shape[1] !=5:
+            raise ValueError('Unexpected data in replay frames')
 
         nframes=len(replayFrames)
 
