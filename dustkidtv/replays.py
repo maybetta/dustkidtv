@@ -1,8 +1,10 @@
 import certifi
 from urllib.request import urlopen, urlretrieve
 from pandas import DataFrame, concat
+from pandas import set_option as pandas_set_option
 from random import randrange
 from subprocess import Popen
+import time
 import json
 import re
 import os, sys
@@ -15,6 +17,9 @@ from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_
 TILE_WIDTH=48
 START_DELAY=1112
 DEATH_DELAY=1000
+
+pandas_set_option('display.max_rows', None)
+pandas_set_option('display.max_columns', None)
 
 class InvalidReplay(Exception):
     pass
@@ -109,7 +114,7 @@ class ReplayQueue:
 
     def next(self):
         if self.length > 0:
-            self.current=Replay(self.queue.iloc[0])
+            self.current=Replay(self.queue.iloc[0], debug=self.debug)
 
             self.queue.drop(self.queue.index[0], inplace=True)
 
@@ -117,20 +122,46 @@ class ReplayQueue:
         else:
             #select random replay from backup queue
             randId=randrange(len(self.backupQueue))
-            self.current=Replay(self.backupQueue.iloc[randId])
+            self.current=Replay(self.backupQueue.iloc[randId], debug=self.debug)
+            self.backupCounter+=1
+
+        self.counter+=1
+
+        if self.debug:
+            with open('dustkidtv.log', 'a') as logfile:
+                logfile.write('\n')
+                logfile.write('--------------------------------------------------------------------------------\n')
+                logfile.write('\n')
+                logfile.write('Replays played: %5i\t Replays in queue: %3i\n'%(self.counter, self.length))
+                logfile.write('New rep played: %5i\t Old rep played: %5i\n'%(self.counter-self.backupCounter, self.backupCounter))
+
+                if self.debug>1:
+                    logfile.write('\nQueue:\n')
+                    logfile.write(str(self.queue))
+                    logfile.write('\n')
+                    logfile.write('\nHistory:\n')
+                    logfile.write(str(self.history)+'\n')
+                    logfile.write('\n')
+
+                logfile.write('Current replay: %i\t Timestamp: %s UTC\n'%(self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
+                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n'%(self.current.level, self.current.username, self.current.time/1000.))
+                logfile.write('\n')
 
         return (self.current)
 
 
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        self.debug=debug
         self.history=[]
+        self.counter=0
         self.queue=self.findNewReplays()
         self.length=len(self.queue)
         self.sortReplays()
         self.queueId=self.getReplayId()
-        self.current=None #Replay class
+        self.current=None
         self.backupQueue=self.getBackupQueue()
+        self.backupCounter=0
 
 
 
@@ -140,18 +171,22 @@ class ReplayQueue:
 class Replay:
 
     def openReplay(self, url):
-        if sys.platform=='win32':
-            if not (url.startswith('http://') or url.startswith('https://')):
-                url=url.replace('/','\\')
-            os.startfile(url)
-        elif sys.platform=='darwin':
-            Popen(['open', url])
-        else:
-            try:
+        try:
+            if sys.platform=='win32':
+                if not (url.startswith('http://') or url.startswith('https://')):
+                    url=url.replace('/','\\')
+                os.startfile(url)
+            elif sys.platform=='darwin':
+                Popen(['open', url])
+            else:
                 Popen(['xdg-open', url])
-            except OSError:
-                print('Can\'t open dustforce URI: ' + url)
-                sys.exit()
+
+        except OSError:
+            print('Can\'t open dustforce URI: ' + url)
+            if self.debug:
+                with open('dustkidtv.log', 'a') as logfile:
+                    logfile.write('Error: Can\'t open dustforce URI: ' + url + '\n')
+            raise
 
     def downloadReplay(self):
         path='dfreplays/'+str(self.replayId)+'.dfreplay'
@@ -179,7 +214,7 @@ class Replay:
 
         #TODO not really a good check
         if 'Could not find replay' in content:
-            raise InvalidReplay
+            raise ValueError
 
         else:
             metadata=json.loads(content)
@@ -247,7 +282,9 @@ class Replay:
 
         replayFrames=self.getReplayFrames()
         if replayFrames is None or replayFrames.shape[0]<2:
-            print("Not enough desync data to estimate deaths")
+            if self.debug:
+                with open('dustkidtv.log', 'a') as logfile:
+                    logfile.write("Warning: not enough desync data to estimate deaths\n")
             return 0
 
         if replayFrames.shape[1] !=5:
@@ -297,7 +334,9 @@ class Replay:
             f.write(out)
 
 
-    def __init__(self, metadata=None, replayId=None, replayJson=None):
+    def __init__(self, metadata=None, replayId=None, replayJson=None, debug=False):
+
+        self.debug=debug
 
         if metadata is not None:
             self.replayId=metadata['replay_id']
@@ -308,8 +347,10 @@ class Replay:
             metadata=self.loadMetadataFromJson(replayJson)
             self.replayId=metadata['replay_id']
         else:
-            print('No replay info provided')
-            raise InvalidReplay
+            if self.debug:
+                with open('dustkidtv.log', 'a') as logfile:
+                    logfile.write('Error: No replay provided\n')
+            raise ValueError('No replay provided')
 
         self.validated=metadata['validated']
 
@@ -339,7 +380,7 @@ class Replay:
 
         print('\nopening replay %i of %s (%.3f s)'%(self.replayId, self.level, self.time/1000.))
 
-        self.levelFile=Level(self.level)
+        self.levelFile=Level(self.level, debug=self.debug)
         if self.levelFile.hasThumbnail:
             self.thumbnail=self.levelFile.getThumbnail()
         else:
@@ -361,8 +402,14 @@ class Level:
         if os.path.isfile(path):
             return path
         id=re.match('\d+', self.name[::-1]).group()[::-1]
-        print('downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s"%id)
+
+        print('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s"%id)
+        if self.debug:
+            with open('dustkidtv.log', 'a') as logfile:
+                logfile.write('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s\n"%id)
+
         urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s"%id, path)
+
         return path
 
 
@@ -396,7 +443,9 @@ class Level:
         return thumbnail
 
 
-    def __init__(self, level):
+    def __init__(self, level, debug=False):
+        self.debug=debug
+
         self.dfPath=os.environ['DFPATH']
 
         self.name=level
@@ -420,7 +469,9 @@ class Level:
         elif self.isDaily:
             self.levelPath=None
             self.hasThumbnail=False
-            print("can't download dustkid daily")
+            if self.debug:
+                with open('dustkidtv.log', 'a') as logfile:
+                    logfile.write("Warning: can't download dustkid daily level file\n")
         else:
             self.levelPath=self.downloadLevel()
             self.hasThumbnail=True

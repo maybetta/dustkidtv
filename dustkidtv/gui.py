@@ -79,16 +79,17 @@ class Window(Frame):
 
 
     def readConfig(self, configFile='config.json'):
-        try:
 
+        with open(configFile, 'r') as f:
+            conf=json.load(f)
+
+        self.debug=conf['debug']
+
+        try:
             self.dfPath=os.environ['DFPATH']
             self.dfExePath=os.environ['DFEXE']
 
         except KeyError:
-
-            with open(configFile, 'r') as f:
-                conf=json.load(f)
-
             self.dfPath=conf['path']
             self.dfExePath=conf['dustmod']
 
@@ -100,10 +101,19 @@ class Window(Frame):
         self.keepgoing=False
         self.replay_text.set('Waiting for replay to end...')
 
+        if self.debug:
+            with open('dustkidtv.log', 'a') as logfile:
+                logfile.write('DustkidTV stopped at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+
 
     def run(self):
         self.keepgoing=True
         self.replay_text.set('Starting Dustforce...')
+
+        if self.debug:
+            with open('dustkidtv.log', 'a') as logfile:
+                logfile.write('DustkidTV started at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+
         if self.replay_thread is None:
             self.replay_thread=threading.Thread(target=self.run_thread, daemon=True)
             self.replay_thread.start()
@@ -112,7 +122,7 @@ class Window(Frame):
     def run_thread(self):
             time.sleep(2)
 
-            queue=ReplayQueue()
+            queue=ReplayQueue(self.debug)
             self.queueLength=queue.length
 
             while self.keepgoing:

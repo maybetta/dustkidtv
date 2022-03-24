@@ -5,10 +5,10 @@ dist/
 build/
 *.spec
 
+*.log
 *.dfreplay
 dflevels/*
 !dflevels/dflevels.txt
-!dflevels/infinidifficult_fixed
 
 ideas.txt
 info*
