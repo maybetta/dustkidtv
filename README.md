@@ -11,10 +11,11 @@ Plays recent Dustforce replays from dustkid.com
 pillow
 numpy
 pandas
+dustmaker
 certifi
 ```
 
-Install them with `pip install pillow numpy pandas` or any other preferred method.
+Install them with `pip install pillow numpy pandas` or `pip install -r requirements.txt` any other preferred method.
 
 It also needs [dustmaker](https://github.com/msg555/dustmaker) version >= 1.1.1: download [this](https://github.com/msg555/dustmaker/archive/refs/heads/main.zip) and install with `python setup.py install`.
 
