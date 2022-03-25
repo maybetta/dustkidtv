@@ -128,7 +128,7 @@ class ReplayQueue:
         self.counter+=1
 
         if self.debug:
-            with open('dustkidtv.log', 'a') as logfile:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('\n')
                 logfile.write('--------------------------------------------------------------------------------\n')
                 logfile.write('\n')
@@ -184,7 +184,7 @@ class Replay:
         except OSError:
             print('Can\'t open dustforce URI: ' + url)
             if self.debug:
-                with open('dustkidtv.log', 'a') as logfile:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write('Error: Can\'t open dustforce URI: ' + url + '\n')
             raise
 
@@ -283,7 +283,7 @@ class Replay:
         replayFrames=self.getReplayFrames()
         if replayFrames is None or replayFrames.shape[0]<2:
             if self.debug:
-                with open('dustkidtv.log', 'a') as logfile:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write("Warning: not enough desync data to estimate deaths\n")
             return 0
 
@@ -348,7 +348,7 @@ class Replay:
             self.replayId=metadata['replay_id']
         else:
             if self.debug:
-                with open('dustkidtv.log', 'a') as logfile:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write('Error: No replay provided\n')
             raise ValueError('No replay provided')
 
@@ -405,7 +405,7 @@ class Level:
 
         print('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s"%id)
         if self.debug:
-            with open('dustkidtv.log', 'a') as logfile:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s\n"%id)
 
         urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s"%id, path)
@@ -470,7 +470,7 @@ class Level:
             self.levelPath=None
             self.hasThumbnail=False
             if self.debug:
-                with open('dustkidtv.log', 'a') as logfile:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write("Warning: can't download dustkid daily level file\n")
         else:
             self.levelPath=self.downloadLevel()

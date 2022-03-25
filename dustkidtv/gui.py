@@ -102,7 +102,7 @@ class Window(Frame):
         self.replay_text.set('Waiting for replay to end...')
 
         if self.debug:
-            with open('dustkidtv.log', 'a') as logfile:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('DustkidTV stopped at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
 
 
@@ -111,7 +111,7 @@ class Window(Frame):
         self.replay_text.set('Starting Dustforce...')
 
         if self.debug:
-            with open('dustkidtv.log', 'a') as logfile:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('DustkidTV started at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
 
         if self.replay_thread is None:
