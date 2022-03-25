@@ -76,8 +76,8 @@ class ReplayQueue:
         return weight
 
     def computeReplayPriority(self, metadata):
-        metadata['priority'] = [self.computeReplayWeight(r) for _, r in metadata.iterrows()]
-        return metadata["time"]
+        weights = [self.computeReplayWeight(r) for _, r in metadata.iterrows()]
+        return weights
 
     def sortReplays(self):
         self.queue["priority"] = self.computeReplayPriority(self.queue)
