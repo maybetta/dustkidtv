@@ -1,10 +1,12 @@
 import certifi
 from urllib.request import urlopen, urlretrieve
-from pandas import DataFrame, concat
+from pandas import DataFrame, Series, concat
 from pandas import set_option as pandas_set_option
 from random import randrange
 from subprocess import Popen
 import time
+import pytz
+import datetime
 import json
 import re
 import os, sys
@@ -18,13 +20,25 @@ TILE_WIDTH=48
 START_DELAY=1112
 DEATH_DELAY=1000
 
+
+def isDst(time, timezone="America/Los_Angeles"):
+    timezone=pytz.timezone(timezone)
+    localTime=timezone.localize(time, is_dst=None)
+    return localTime.dst!=datetime.timedelta(0,0)
+
+if isDst(datetime.datetime.utcnow()):
+    CHANGE_DAILY_TIME=datetime.time(hour=4, tzinfo=datetime.timezone.utc)
+else:
+    CHANGE_DAILY_TIME=datetime.time(hour=5, tzinfo=datetime.timezone.utc)
+
+
+
 pandas_set_option('display.max_rows', None)
 pandas_set_option('display.max_columns', None)
 
+
 class InvalidReplay(Exception):
     pass
-
-
 
 
 
@@ -98,6 +112,9 @@ class ReplayQueue:
         #remove elements already in queue
         self.queue.drop_duplicates(subset='replay_id', ignore_index=True, inplace=True)
 
+        #remove old daily replays
+        self.cleanDaily()
+
         queueLength=len(self.queue)
         if queueLength>self.maxQueueLength:
             self.queue=self.queue[:self.maxQueueLength]
@@ -105,6 +122,14 @@ class ReplayQueue:
         self.length=len(self.queue)
         self.sortReplays()
         self.queueId=self.getReplayId()
+
+
+    def cleanDaily(self):
+        today=datetime.datetime.utcnow().date()
+        dailyTime=datetime.datetime.combine(today, CHANGE_DAILY_TIME).timestamp()
+
+        oldDaily=(self.queue['timestamp']<dailyTime) & (Series([bool(re.fullmatch('random\d+', level)) for level in self.queue['level']])) #select old dailies replays
+        self.queue.drop(self.queue[oldDaily].index, inplace=True)
 
 
     def update(self, id):
@@ -413,6 +438,23 @@ class Level:
         return path
 
 
+    def downloadDaily(self):
+        path='dflevels/'+str(self.name) #this is in the format random-dddd
+        if os.path.isfile(path) and self.dailyIsCurrent:
+            return path
+
+        print('Downloading '+"https://dustkid.com/backend8/level.php?id=random")
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Downloading '+"https://dustkid.com/backend8/level.php?id=random\n")
+
+        urlretrieve("https://dustkid.com/backend8/level.php?id=random", path)
+        shutil.copyfile(path, self.levelPath) #daily name in df folder is always random (no counter appended)
+        self.dailyIsCurrent=True
+
+        return path
+
+
     def getCheckpointsCoordinates(self):
         checkpoints=[]
 
@@ -467,11 +509,11 @@ class Level:
             self.levelPath='dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail=False
         elif self.isDaily:
-            self.levelPath=None
-            self.hasThumbnail=False
-            if self.debug:
-                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                    logfile.write("Warning: can't download dustkid daily level file\n")
+            self.levelPath=self.dfPath+"/user/levels/random"
+            dailyPath='dflevels/'+str(self.name)
+            self.hasThumbnail=True
+            self.dailyIsCurrent=os.path.isfile(dailyPath)
+            self.downloadDaily()
         else:
             self.levelPath=self.downloadLevel()
             self.hasThumbnail=True
