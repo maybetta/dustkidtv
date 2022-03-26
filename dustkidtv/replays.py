@@ -489,6 +489,7 @@ class Level:
         self.debug=debug
 
         self.dfPath=os.environ['DFPATH']
+        self.dfDailyPath=os.environ['DFDAILYPATH']
 
         self.name=level
 
@@ -509,7 +510,7 @@ class Level:
             self.levelPath='dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail=False
         elif self.isDaily:
-            self.levelPath=self.dfPath+"/user/levels/random"
+            self.levelPath=self.dfDailyPath+"/user/levels/random"
             dailyPath='dflevels/'+str(self.name)
             self.hasThumbnail=True
             self.dailyIsCurrent=os.path.isfile(dailyPath)

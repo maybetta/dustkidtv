@@ -86,15 +86,18 @@ class Window(Frame):
         self.debug=conf['debug']
 
         try:
-            self.dfPath=os.environ['DFPATH']
             self.dfExePath=os.environ['DFEXE']
+            self.dfPath=os.environ['DFPATH']
+            self.dfDailyPath=os.environ['DFDAILYPATH']
 
         except KeyError:
-            self.dfPath=conf['path']
             self.dfExePath=conf['dustmod']
+            self.dfPath=conf['path']
+            self.dfDailyPath=conf['local_path']
 
-            os.environ['DFPATH']=self.dfPath
             os.environ['DFEXE']=self.dfExePath
+            os.environ['DFPATH']=self.dfPath
+            os.environ['DFDAILYPATH']=self.dfDailyPath
 
 
     def stop(self):

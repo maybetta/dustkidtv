@@ -29,12 +29,15 @@ Find your Dustforce game folder. If you are using the Steam version, it will loo
 
 ```
 {
-  "path":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
-  "dustmod": "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
+  "dustmod":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
+  "path":       "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
+  "local_path": "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
 }
 ```
 
-Alternatively, you can set the `DFPATH` and `DFEXE` environmental variables.
+If you are using the DRM-free Windows version of Dustforce, local_path should point to the Dustforce folder in AppData, usually located in `C:\Users\USERNAME\AppData\Roaming\Dustforce`.
+
+Alternatively, you can set the `DFPATH`, `DFDAILYPATH` and `DFEXE` environmental variables.
 
 Run `main.py` to launch Dustkid TV.
 
