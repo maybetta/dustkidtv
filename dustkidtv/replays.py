@@ -9,7 +9,7 @@ import pytz
 import datetime
 import json
 import re
-import os, sys
+import os, sys, shutil
 import dustmaker
 import numpy as np
 from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
