@@ -122,7 +122,7 @@ class ReplayQueue:
 
         #remove old daily replays
         self.cleanDaily()
-        
+
         queueLength = len(self.queue)
         if queueLength > self.maxQueueLength:
             self.queue = self.queue[:self.maxQueueLength]
@@ -175,10 +175,8 @@ class ReplayQueue:
                     logfile.write(str(self.history) + '\n')
                     logfile.write('\n')
 
-                logfile.write('Current replay: %i\t Timestamp: %s UTC\n' % (
-                self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
-                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n' % (
-                self.current.level, self.current.username, self.current.time / 1000.))
+                logfile.write('Current replay: %i\t Timestamp: %s UTC\n' % (self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
+                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n' % (self.current.level, self.current.username, self.current.time / 1000.))
                 logfile.write('\n')
 
         return (self.current)
@@ -333,10 +331,7 @@ class Replay:
         estimatedCoords2[1:] = coords[:-1] + velocity[1:] * (deltat).reshape((nframes - 1, 1))
 
         estimatedBox = np.c_[
-            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1],
-                                                                                  estimatedCoords2[:, 1]), np.maximum(
-                estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:,
-                                                                                                  1])]  # box boundary defined as [[x1, y1, x2, y2]]
+            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1], estimatedCoords2[:, 1]), np.maximum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:, 1])]  # box boundary defined as [[x1, y1, x2, y2]]
 
         err = np.zeros(nframes, dtype=float)
         for frame in range(nframes):

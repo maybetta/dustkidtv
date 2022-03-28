@@ -15,9 +15,7 @@ dustmaker
 certifi
 ```
 
-Install them with `pip install pillow numpy pandas` or `pip install -r requirements.txt` any other preferred method.
-
-It also needs [dustmaker](https://github.com/msg555/dustmaker) version >= 1.1.1: download [this](https://github.com/msg555/dustmaker/archive/refs/heads/main.zip) and install with `python setup.py install`.
+Install them with `pip install -r requirements.txt` any other preferred method (note that [Dustmaker](https://github.com/msg555/dustmaker) needs to be version >= 1.1.1).
 
 
 ## Usage
@@ -60,6 +58,5 @@ This program caches custom map files and replay files. It is safe to delete the 
 ## Thanks
 
 Thanks to Msg and Joel for sharing ideas / dustbot code.  
-Thanks to Jdude for patiently listening to a boring analysis of player trajectories.  
-Thanks to Skyhawk for help with Tkinter.  
+Thanks to jdude, Skyhawk and loginn for help with this project.  
 Wallpaper by @tashizuna
