@@ -14,11 +14,9 @@ import dustmaker
 import numpy as np
 from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
 
-
-
-TILE_WIDTH=48
-START_DELAY=1112
-DEATH_DELAY=1000
+TILE_WIDTH = 48
+START_DELAY = 1112
+DEATH_DELAY = 1000
 
 
 def isDst(time, timezone="America/Los_Angeles"):
@@ -43,86 +41,95 @@ class InvalidReplay(Exception):
 
 
 class ReplayQueue:
+    maxHistoryLength = 50
+    maxQueueLength = 100
 
-    maxHistoryLength=50
-    maxQueueLength=100
+    def findNewReplays(self, onlyValid = True):
+        dustkidPage = urlopen("https://dustkid.com/")
+        content = dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
+        markerStart = "init_replays = ["
+        markerEnd = "];"
+        start = content.find(markerStart) + len(markerStart)
+        end = content[start:].find(markerEnd) + start
 
-    def findNewReplays(self, onlyValid=True):
-        dustkidPage=urlopen("https://dustkid.com/")
-        content=dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
+        replayListJson = "[" + content[start:end] + "]"
 
-        markerStart="init_replays = ["
-        markerEnd="];"
-        start=content.find(markerStart)+len(markerStart)
-        end=content[start:].find(markerEnd)+start
+        replayList = json.loads(replayListJson)
 
-        replayListJson="["+content[start:end]+"]"
-
-        replayList=json.loads(replayListJson)
-
-        #converts this list of dicts to pandas dataframe
-        replayFrame=DataFrame(replayList)
+        # converts this list of dicts to pandas dataframe
+        replayFrame = DataFrame(replayList)
 
         if onlyValid:
-            replayFrame.drop(replayFrame[replayFrame['validated']!=1].index, inplace=True)
+            replayFrame.drop(replayFrame[replayFrame['validated'] != 1].index, inplace=True)
 
         return replayFrame
-
 
     def getBackupQueue(self, queueFilename='dustkidtv/assets/replays.json'):
 
         with open(queueFilename) as f:
-            replayListJson=f.read()
+            replayListJson = f.read()
 
-        replayList=json.loads(replayListJson)
-        replayFrame=DataFrame(replayList)
+        replayList = json.loads(replayListJson)
+        replayFrame = DataFrame(replayList)
         return replayFrame
 
+    def computeReplayWeight(self, rpl):
+        # These values are pulled out of my ass so feel free to tweak everything.
+        # I'm just trying to think about all the possible things we might want to take in account
+
+        # PB good
+        factor = 1 if rpl['pb'] else 2
+        # Fast replay good up to 200
+        factor += min([rpl['rank_all_score'], rpl['rank_all_time'], 200])
+        # apples good
+        factor /= (rpl['apples'] + 1)
+        # consite good
+        if rpl['level'] == 'boxes':
+            factor = 0.001
+
+        weight = rpl['time'] * factor
+        return weight
 
     def computeReplayPriority(self, metadata):
-        return metadata["time"]
-
+        weights = [self.computeReplayWeight(r) for _, r in metadata.iterrows()]
+        return weights
 
     def sortReplays(self):
-        self.queue["priority"]=self.computeReplayPriority(self.queue)
+        self.queue["priority"] = self.computeReplayPriority(self.queue)
         self.queue.sort_values("priority", inplace=True, ignore_index=True)
 
-
     def getReplayId(self):
-        ridList=self.queue['replay_id'].tolist()
+        ridList = self.queue['replay_id'].tolist()
         return ridList
 
-
     def updateHistory(self, id):
-        self.history=self.history + [id]
-        if len(self.history)>self.maxHistoryLength:
+        self.history = self.history + [id]
+        if len(self.history) > self.maxHistoryLength:
             self.history.pop(0)
 
-
     def updateQueue(self):
-        newReplays=self.findNewReplays()
+        newReplays = self.findNewReplays()
 
-        #remove elements in history
+        # remove elements in history
         for id in self.history:
-            newReplays.drop(newReplays[newReplays['replay_id']==id].index, inplace=True)
+            newReplays.drop(newReplays[newReplays['replay_id'] == id].index, inplace=True)
 
-        self.queue=concat([newReplays, self.queue], ignore_index=True)
+        self.queue = concat([newReplays, self.queue], ignore_index=True)
 
-        #remove elements already in queue
+        # remove elements already in queue
         self.queue.drop_duplicates(subset='replay_id', ignore_index=True, inplace=True)
 
         #remove old daily replays
         self.cleanDaily()
+        
+        queueLength = len(self.queue)
+        if queueLength > self.maxQueueLength:
+            self.queue = self.queue[:self.maxQueueLength]
 
-        queueLength=len(self.queue)
-        if queueLength>self.maxQueueLength:
-            self.queue=self.queue[:self.maxQueueLength]
-
-        self.length=len(self.queue)
+        self.length = len(self.queue)
         self.sortReplays()
-        self.queueId=self.getReplayId()
-
+        self.queueId = self.getReplayId()
 
     def cleanDaily(self):
         today=datetime.datetime.utcnow().date()
@@ -136,72 +143,68 @@ class ReplayQueue:
         self.updateHistory(id)
         self.updateQueue()
 
-
     def next(self):
         if self.length > 0:
-            self.current=Replay(self.queue.iloc[0], debug=self.debug)
+            self.current = Replay(self.queue.iloc[0], debug=self.debug)
 
             self.queue.drop(self.queue.index[0], inplace=True)
 
             self.queueId.pop(0)
         else:
-            #select random replay from backup queue
-            randId=randrange(len(self.backupQueue))
-            self.current=Replay(self.backupQueue.iloc[randId], debug=self.debug)
-            self.backupCounter+=1
+            # select random replay from backup queue
+            randId = randrange(len(self.backupQueue))
+            self.current = Replay(self.backupQueue.iloc[randId], debug=self.debug)
+            self.backupCounter += 1
 
-        self.counter+=1
+        self.counter += 1
 
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('\n')
                 logfile.write('--------------------------------------------------------------------------------\n')
                 logfile.write('\n')
-                logfile.write('Replays played: %5i\t Replays in queue: %3i\n'%(self.counter, self.length))
-                logfile.write('New rep played: %5i\t Old rep played: %5i\n'%(self.counter-self.backupCounter, self.backupCounter))
+                logfile.write('Replays played: %5i\t Replays in queue: %3i\n' % (self.counter, self.length))
+                logfile.write('New rep played: %5i\t Old rep played: %5i\n' % (
+                self.counter - self.backupCounter, self.backupCounter))
 
-                if self.debug>1:
+                if self.debug > 1:
                     logfile.write('\nQueue:\n')
                     logfile.write(str(self.queue))
                     logfile.write('\n')
                     logfile.write('\nHistory:\n')
-                    logfile.write(str(self.history)+'\n')
+                    logfile.write(str(self.history) + '\n')
                     logfile.write('\n')
 
-                logfile.write('Current replay: %i\t Timestamp: %s UTC\n'%(self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
-                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n'%(self.current.level, self.current.username, self.current.time/1000.))
+                logfile.write('Current replay: %i\t Timestamp: %s UTC\n' % (
+                self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
+                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n' % (
+                self.current.level, self.current.username, self.current.time / 1000.))
                 logfile.write('\n')
 
         return (self.current)
 
-
-
     def __init__(self, debug=False):
-        self.debug=debug
-        self.history=[]
-        self.counter=0
-        self.queue=self.findNewReplays()
-        self.length=len(self.queue)
+        self.debug = debug
+        self.history = []
+        self.counter = 0
+        self.queue = self.findNewReplays()
+        self.length = len(self.queue)
         self.sortReplays()
-        self.queueId=self.getReplayId()
-        self.current=None
-        self.backupQueue=self.getBackupQueue()
-        self.backupCounter=0
-
-
-
-
+        self.queueId = self.getReplayId()
+        self.current = None
+        self.backupQueue = self.getBackupQueue()
+        self.backupCounter = 0
 
 
 class Replay:
 
     def openReplay(self, url):
         try:
-            if sys.platform=='win32':
+            if sys.platform == 'win32':
                 if not (url.startswith('http://') or url.startswith('https://')):
-                    url=url.replace('/','\\')
+                    url = url.replace('/', '\\')
                 os.startfile(url)
-            elif sys.platform=='darwin':
+            elif sys.platform == 'darwin':
                 Popen(['open', url])
             else:
                 Popen(['xdg-open', url])
@@ -214,37 +217,33 @@ class Replay:
             raise
 
     def downloadReplay(self):
-        path='dfreplays/'+str(self.replayId)+'.dfreplay'
+        path = 'dfreplays/' + str(self.replayId) + '.dfreplay'
         if os.path.isfile(path):
             return path
-        urlretrieve("https://dustkid.com/backend8/get_replay.php?replay="+str(self.replayId), path)
+        urlretrieve("https://dustkid.com/backend8/get_replay.php?replay=" + str(self.replayId), path)
         return path
 
     def getReplayUri(self):
         return "dustforce://replay/" + str(self.replayId)
 
-
     def getReplayPage(self):
         return "https://dustkid.com/replayviewer.php?replay_id=" + str(self.replayId) + "&json=true&metaonly"
 
-
     def loadMetadataFromJson(self, replayJson):
-        metadata=json.loads(replayJson)
+        metadata = json.loads(replayJson)
         return metadata
 
-
     def loadMetadataFromPage(self, id):
-        replayPage=urlopen(self.getReplayPage())
-        content=replayPage.read().decode(replayPage.headers.get_content_charset())
+        replayPage = urlopen(self.getReplayPage())
+        content = replayPage.read().decode(replayPage.headers.get_content_charset())
 
-        #TODO not really a good check
+        # TODO not really a good check
         if 'Could not find replay' in content:
             raise ValueError
 
         else:
-            metadata=json.loads(content)
+            metadata = json.loads(content)
             return metadata
-
 
     def getReplayFrames(self):
         with dustmaker.DFReader(open(self.replayPath, "rb")) as reader:
@@ -252,191 +251,187 @@ class Replay:
 
         entity_data = replay.get_player_entity_data()
         if entity_data is None:
-            replayFrames=None
+            replayFrames = None
 
         else:
-            nframes=len(entity_data.frames)
-            replayFrames=np.empty([nframes, 5])
-            i=0
+            nframes = len(entity_data.frames)
+            replayFrames = np.empty([nframes, 5])
+            i = 0
             for frame in entity_data.frames:
-                replayFrames[i]=[frame.frame, frame.x_pos, frame.y_pos, frame.x_speed, frame.y_speed]
-                i+=1
+                replayFrames[i] = [frame.frame, frame.x_pos, frame.y_pos, frame.x_speed, frame.y_speed]
+                i += 1
 
         return replayFrames
-
 
     def estimateDeaths(self):
 
         def doBBoxDistance(point, box):
-            x, y=point
-            x1, y1, x2, y2=box
+            x, y = point
+            x1, y1, x2, y2 = box
 
-            inXRange=(x>=x1 and x<=x2)
-            inYRange=(y>=y1 and y<=y2)
+            inXRange = (x >= x1 and x <= x2)
+            inYRange = (y >= y1 and y <= y2)
 
-            dx=np.minimum(np.abs(x-x1), np.abs(x-x2))
-            dy=np.minimum(np.abs(y-y1), np.abs(y-y2))
+            dx = np.minimum(np.abs(x - x1), np.abs(x - x2))
+            dy = np.minimum(np.abs(y - y1), np.abs(y - y2))
 
             if inXRange and inYRange:
-                d=0.
+                d = 0.
             elif inXRange:
-                d=dy
+                d = dy
             elif inYRange:
-                d=dx
+                d = dx
             else:
-                d=np.sqrt(dx*dx+dy*dy)
+                d = np.sqrt(dx * dx + dy * dy)
             return d
 
-
         def compareToCheckpoints(candidates, coords, checkpoints, kTiles=4):
-            estimatedDeathIdx=[]
+            estimatedDeathIdx = []
             for idx in candidates:
-                coord=coords[idx]
+                coord = coords[idx]
                 for cp in checkpoints:
-                    distance=np.sqrt(np.sum((coord-cp)**2))
-                    if distance<(kTiles*TILE_WIDTH):
+                    distance = np.sqrt(np.sum((coord - cp) ** 2))
+                    if distance < (kTiles * TILE_WIDTH):
                         estimatedDeathIdx.append(idx)
                         break
             return np.array(estimatedDeathIdx)
 
-
         def getCandidates(err, kTiles=2):
-            candidates=np.where(err>kTiles*TILE_WIDTH)[0]
+            candidates = np.where(err > kTiles * TILE_WIDTH)[0]
             return candidates
 
-
-        replayFrames=self.getReplayFrames()
-        if replayFrames is None or replayFrames.shape[0]<2:
+        replayFrames = self.getReplayFrames()
+        if replayFrames is None or replayFrames.shape[0] < 2:
             if self.debug:
                 with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write("Warning: not enough desync data to estimate deaths\n")
             return 0
 
-        if replayFrames.shape[1] !=5:
+        if replayFrames.shape[1] != 5:
             raise ValueError('Unexpected data in replay frames')
 
-        nframes=len(replayFrames)
+        nframes = len(replayFrames)
 
-        frames=replayFrames[:,0]
-        lastFrame=int(frames[-1])
+        frames = replayFrames[:, 0]
+        lastFrame = int(frames[-1])
 
-        t=frames/50.
-        coords=replayFrames[:,[1,2]]
-        velocity=replayFrames[:,[3,4]]
+        t = frames / 50.
+        coords = replayFrames[:, [1, 2]]
+        velocity = replayFrames[:, [3, 4]]
 
-        checkpoints=self.levelFile.getCheckpointsCoordinates()
-        ncheckpoints=len(checkpoints)
+        checkpoints = self.levelFile.getCheckpointsCoordinates()
+        ncheckpoints = len(checkpoints)
 
-        deltat=t[1:]-t[:-1]
+        deltat = t[1:] - t[:-1]
 
-        estimatedCoords=np.empty((nframes, 2))
-        estimatedCoords[0]=coords[0]
-        estimatedCoords[1:]=coords[:-1]+velocity[:-1]*(deltat).reshape((nframes-1,1))
+        estimatedCoords = np.empty((nframes, 2))
+        estimatedCoords[0] = coords[0]
+        estimatedCoords[1:] = coords[:-1] + velocity[:-1] * (deltat).reshape((nframes - 1, 1))
 
-        estimatedCoords2=np.empty((nframes, 2))
-        estimatedCoords2[0]=coords[0]
-        estimatedCoords2[1:]=coords[:-1]+velocity[1:]*(deltat).reshape((nframes-1,1))
+        estimatedCoords2 = np.empty((nframes, 2))
+        estimatedCoords2[0] = coords[0]
+        estimatedCoords2[1:] = coords[:-1] + velocity[1:] * (deltat).reshape((nframes - 1, 1))
 
-        estimatedBox=np.c_[np.minimum(estimatedCoords[:,0], estimatedCoords2[:,0]),np.minimum(estimatedCoords[:,1], estimatedCoords2[:,1]), np.maximum(estimatedCoords[:,0], estimatedCoords2[:,0]), np.maximum(estimatedCoords[:,1], estimatedCoords2[:,1])] # box boundary defined as [[x1, y1, x2, y2]]
+        estimatedBox = np.c_[
+            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1],
+                                                                                  estimatedCoords2[:, 1]), np.maximum(
+                estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:,
+                                                                                                  1])]  # box boundary defined as [[x1, y1, x2, y2]]
 
-        err=np.zeros(nframes, dtype=float)
+        err = np.zeros(nframes, dtype=float)
         for frame in range(nframes):
-            point=coords[frame]
-            box=estimatedBox[frame]
-            d=doBBoxDistance(point, box)
-            err[frame]=d
+            point = coords[frame]
+            box = estimatedBox[frame]
+            d = doBBoxDistance(point, box)
+            err[frame] = d
 
-        candidates=getCandidates(err)
-        estimatedDeathIdx=compareToCheckpoints(candidates, coords, checkpoints)
-        ndeaths=len(estimatedDeathIdx)
+        candidates = getCandidates(err)
+        estimatedDeathIdx = compareToCheckpoints(candidates, coords, checkpoints)
+        ndeaths = len(estimatedDeathIdx)
 
         return ndeaths
 
-
     def saveInfoToFile(self):
-        out='%s %s %s in %.3fs'%(self.levelname, self.completion, self.finesse, self.username, rep.time/1000.)
+        out = '%s %s %s in %.3fs' % (self.levelname, self.completion, self.finesse, self.username, rep.time / 1000.)
         with open('replayinfo.txt', 'w') as f:
             f.write(out)
 
-
     def __init__(self, metadata=None, replayId=None, replayJson=None, debug=False):
 
-        self.debug=debug
+        self.debug = debug
 
         if metadata is not None:
-            self.replayId=metadata['replay_id']
+            self.replayId = metadata['replay_id']
         elif replayId is not None:
-            self.replayId=replayId
-            metadata=self.loadMetadataFromPage(replayId)
+            self.replayId = replayId
+            metadata = self.loadMetadataFromPage(replayId)
         elif replayJson is not None:
-            metadata=self.loadMetadataFromJson(replayJson)
-            self.replayId=metadata['replay_id']
+            metadata = self.loadMetadataFromJson(replayJson)
+            self.replayId = metadata['replay_id']
         else:
             if self.debug:
                 with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                     logfile.write('Error: No replay provided\n')
             raise ValueError('No replay provided')
 
-        self.validated=metadata['validated']
+        self.validated = metadata['validated']
 
-        self.time=metadata['time']
+        self.time = metadata['time']
 
-        #download replay from dustkid
-        self.replayPath=self.downloadReplay()
+        # download replay from dustkid
+        self.replayPath = self.downloadReplay()
 
-        self.numplayers=metadata['numplayers']
+        self.numplayers = metadata['numplayers']
 
-        self.characterNum=metadata['character']
-        characters=["Dustman", "Dustgirl", "Dustkid", "Dustworth"]
+        self.characterNum = metadata['character']
+        characters = ["Dustman", "Dustgirl", "Dustkid", "Dustworth"]
 
-        self.completionNum=metadata['score_completion']
-        self.finesseNum=metadata['score_finesse']
-        scores=['D', 'C', 'B', 'A', 'S']
-        self.completion=scores[self.completionNum-1]
-        self.finesse=scores[self.finesseNum-1]
+        self.completionNum = metadata['score_completion']
+        self.finesseNum = metadata['score_finesse']
+        scores = ['D', 'C', 'B', 'A', 'S']
+        self.completion = scores[self.completionNum - 1]
+        self.finesse = scores[self.finesseNum - 1]
 
-        self.apple=metadata['apples']
-        self.isPB=metadata['pb']
+        self.apple = metadata['apples']
+        self.isPB = metadata['pb']
 
-        self.timestamp=metadata['timestamp']
-        self.username=metadata['username']
-        self.levelname=metadata['levelname'] #public level name
-        self.level=metadata['level'] #in game level name
+        self.timestamp = metadata['timestamp']
+        self.username = metadata['username']
+        self.levelname = metadata['levelname']  # public level name
+        self.level = metadata['level']  # in game level name
 
-        print('\nopening replay %i of %s (%.3f s)'%(self.replayId, self.level, self.time/1000.))
+        print('\nopening replay %i of %s (%.3f s)' % (self.replayId, self.level, self.time / 1000.))
 
-        self.levelFile=Level(self.level, debug=self.debug)
+        self.levelFile = Level(self.level, debug=self.debug)
         if self.levelFile.hasThumbnail:
-            self.thumbnail=self.levelFile.getThumbnail()
+            self.thumbnail = self.levelFile.getThumbnail()
         else:
-            self.thumbnail=None
+            self.thumbnail = None
 
-        #estimation of replay length in real time
-        if self.numplayers>1 or not self.levelFile.levelPath: #can't estimate deaths on dustkid daily
-            self.deaths=0
+        # estimation of replay length in real time
+        if self.numplayers > 1 or not self.levelFile.levelPath:  # can't estimate deaths on dustkid daily
+            self.deaths = 0
         else:
-            self.deaths=self.estimateDeaths()
-        self.realTime=(self.time+START_DELAY+self.deaths*DEATH_DELAY)/1000.
-
+            self.deaths = self.estimateDeaths()
+        self.realTime = (self.time + START_DELAY + self.deaths * DEATH_DELAY) / 1000.
 
 
 class Level:
 
     def downloadLevel(self):
-        path='dflevels/'+str(self.name)
+        path = 'dflevels/' + str(self.name)
         if os.path.isfile(path):
             return path
-        id=re.match('\d+', self.name[::-1]).group()[::-1]
+        id = re.match('\d+', self.name[::-1]).group()[::-1]
 
-        print('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s"%id)
+        print('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s" % id)
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('Downloading '+"http://atlas.dustforce.com/gi/downloader.php?id=%s\n"%id)
+                logfile.write('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s\n" % id)
 
-        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s"%id, path)
+        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s" % id, path)
 
         return path
-
 
     def downloadDaily(self):
         path='dflevels/'+str(self.name) #this is in the format random-dddd
@@ -454,13 +449,12 @@ class Level:
 
         return path
 
-
     def getCheckpointsCoordinates(self):
-        checkpoints=[]
+        checkpoints = []
 
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
-            levelFile=reader.read_level()
-            entities=levelFile.entities
+            levelFile = reader.read_level()
+            entities = levelFile.entities
 
             for entity in entities.values():
                 if isinstance(entity[2], dustmaker.entity.CheckPoint):
@@ -468,53 +462,51 @@ class Level:
 
         return np.array(checkpoints)
 
-
     def getThumbnail(self):
 
         if self.isStock:
             if self.hasLevelIcon:
-                imgPath='dustkidtv/assets/icons/%s.png'%self.name
+                imgPath = 'dustkidtv/assets/icons/%s.png' % self.name
                 with open(imgPath, 'rb') as f:
-                    thumbnail=f.read()
+                    thumbnail = f.read()
                 return thumbnail
 
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
-            level=reader.read_level()
-            thumbnail=level.sshot
+            level = reader.read_level()
+            thumbnail = level.sshot
 
         return thumbnail
 
-
     def __init__(self, level, debug=False):
-        self.debug=debug
+        self.debug = debug
 
-        self.dfPath=os.environ['DFPATH']
-        self.dfDailyPath=os.environ['DFDAILYPATH']
+        self.dfPath = os.environ['DFPATH']
+        self.dfDailyPath  =os.environ['DFDAILYPATH']
 
-        self.name=level
+        self.name = level
 
-        self.isStock=level in STOCK_MAPS
-        self.isCmp=level in CMP_MAPS
-        self.isInfini=level=='exec func ruin user'
-        self.isDaily=re.fullmatch('random\d+', level)
+        self.isStock = level in STOCK_MAPS
+        self.isCmp = level in CMP_MAPS
+        self.isInfini = level == 'exec func ruin user'
+        self.isDaily = re.fullmatch('random\d+', level)
 
         if self.isStock:
-            self.levelPath=self.dfPath+"/content/levels2/"+level
-            self.hasLevelThumbnail=(level in MAPS_WITH_THUMBNAIL)
-            self.hasLevelIcon=(level in MAPS_WITH_ICON)
-            self.hasThumbnail=self.hasLevelThumbnail or self.hasLevelIcon
+            self.levelPath = self.dfPath + "/content/levels2/" + level
+            self.hasLevelThumbnail = (level in MAPS_WITH_THUMBNAIL)
+            self.hasLevelIcon = (level in MAPS_WITH_ICON)
+            self.hasThumbnail = self.hasLevelThumbnail or self.hasLevelIcon
         elif self.isCmp:
-            self.levelPath=self.dfPath+"/content/levels3/"+level
-            self.hasThumbnail=True
+            self.levelPath = self.dfPath + "/content/levels3/" + level
+            self.hasThumbnail = True
         elif self.isInfini:
-            self.levelPath='dustkidtv/assets/infinidifficult_fixed'
-            self.hasThumbnail=False
+            self.levelPath = 'dustkidtv/assets/infinidifficult_fixed'
+            self.hasThumbnail = False
         elif self.isDaily:
-            self.levelPath=self.dfDailyPath+"/user/levels/random"
-            dailyPath='dflevels/'+str(self.name)
-            self.hasThumbnail=True
-            self.dailyIsCurrent=os.path.isfile(dailyPath)
+            self.levelPath = self.dfDailyPath+"/user/levels/random"
+            dailyPath = 'dflevels/'+str(self.name)
+            self.hasThumbnail = True
+            self.dailyIsCurrent = os.path.isfile(dailyPath)
             self.downloadDaily()
         else:
-            self.levelPath=self.downloadLevel()
-            self.hasThumbnail=True
+            self.levelPath = self.downloadLevel()
+            self.hasThumbnail = True
