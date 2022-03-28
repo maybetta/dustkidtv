@@ -11,10 +11,11 @@ Plays recent Dustforce replays from dustkid.com
 pillow
 numpy
 pandas
+dustmaker
 certifi
 ```
 
-Install them with `pip install pillow numpy pandas` or any other preferred method.
+Install them with `pip install pillow numpy pandas` or `pip install -r requirements.txt` any other preferred method.
 
 It also needs [dustmaker](https://github.com/msg555/dustmaker) version >= 1.1.1: download [this](https://github.com/msg555/dustmaker/archive/refs/heads/main.zip) and install with `python setup.py install`.
 
@@ -29,12 +30,15 @@ Find your Dustforce game folder. If you are using the Steam version, it will loo
 
 ```
 {
-  "path":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
-  "dustmod": "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
+  "dustmod":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
+  "path":       "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
+  "local_path": "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/"
 }
 ```
 
-Alternatively, you can set the `DFPATH` and `DFEXE` environmental variables.
+If you are using the DRM-free Windows version of Dustforce, local_path should point to the Dustforce folder in AppData, usually located in `C:\Users\USERNAME\AppData\Roaming\Dustforce`.
+
+Alternatively, you can set the `DFPATH`, `DFDAILYPATH` and `DFEXE` environmental variables.
 
 Run `main.py` to launch Dustkid TV.
 
