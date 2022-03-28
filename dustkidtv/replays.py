@@ -78,15 +78,21 @@ class ReplayQueue:
         # These values are pulled out of my ass so feel free to tweak everything.
         # I'm just trying to think about all the possible things we might want to take in account
 
-        # PB good
-        factor = 1 if rpl['pb'] else 2
-        # Fast replay good up to 200
-        factor += min([rpl['rank_all_score'], rpl['rank_all_time'], 200])
-        # apples good
-        factor /= (rpl['apples'] + 1)
-        # consite good
-        if rpl['level'] == 'boxes':
-            factor = 0.001
+        try:
+            # Fast replay good up to RANK_PRIORITY
+            factor = min([rpl['rank_all_score'], rpl['rank_all_time'], self.queuePriority['RANK_PRIORITY']])
+            # PB good
+            if rpl['pb']:
+                factor /= self.queuePriority['PB_PRIORITY']
+            # apples good
+            if rpl['apples']:
+                factor /= (self.queuePriority['APPLES_PRIORITY'] * rpl['apples'])
+            # consite good
+            if rpl['level'] == 'boxes':
+                factor /= self.queuePriority['CONSITE_PRIORITY']
+
+        except TypeError:
+            factor = 1
 
         weight = rpl['time'] * factor
         return weight
@@ -181,8 +187,9 @@ class ReplayQueue:
 
         return (self.current)
 
-    def __init__(self, debug=False):
+    def __init__(self, debug=False, priority=None):
         self.debug = debug
+        self.queuePriority = priority
         self.history = []
         self.counter = 0
         self.queue = self.findNewReplays()
@@ -475,8 +482,15 @@ class Level:
     def __init__(self, level, debug=False):
         self.debug = debug
 
-        self.dfPath = os.environ['DFPATH']
-        self.dfDailyPath  =os.environ['DFDAILYPATH']
+        try:
+            self.dfPath=os.environ['DFPATH']
+            self.dfDailyPath=os.environ['DFDAILYPATH']
+
+        except KeyError:
+            with open(configFile, 'r') as f:
+                conf=json.load(f)
+                self.dfPath=conf['path']
+                self.dfDailyPath=conf['user_path']
 
         self.name = level
 

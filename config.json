@@ -1,6 +1,10 @@
 {
-  "dustmod": "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
-  "path":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/",
-  "local_path":    "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/",
-  "debug": 2
+  "dustmod":          "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/dustmod.exe",
+  "path":             "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/",
+  "user_path":        "C:/Program Files (x86)/Steam/steamapps/common/Dustforce/",
+  "debug":            2,
+  "PB_PRIORITY":      10,
+  "APPLES_PRIORITY":  10,
+  "RANK_PRIORITY":    200,
+  "CONSITE_PRIORITY": 1000
 }

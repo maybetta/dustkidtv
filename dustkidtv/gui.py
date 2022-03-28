@@ -83,7 +83,13 @@ class Window(Frame):
         with open(configFile, 'r') as f:
             conf=json.load(f)
 
-        self.debug=conf['debug']
+        self.debug = conf['debug']
+        self.queuePriority = {
+            "PB_PRIORITY": conf["PB_PRIORITY"],
+            "APPLES_PRIORITY": conf["APPLES_PRIORITY"], # per apple hit :)
+            "RANK_PRIORITY": conf["RANK_PRIORITY"], # prioritize up to this rank
+            "CONSITE_PRIORITY": conf["CONSITE_PRIORITY"] # consite good
+            }
 
         try:
             self.dfExePath=os.environ['DFEXE']
@@ -93,7 +99,7 @@ class Window(Frame):
         except KeyError:
             self.dfExePath=conf['dustmod']
             self.dfPath=conf['path']
-            self.dfDailyPath=conf['local_path']
+            self.dfDailyPath=conf['user_path']
 
             os.environ['DFEXE']=self.dfExePath
             os.environ['DFPATH']=self.dfPath
@@ -125,7 +131,7 @@ class Window(Frame):
     def run_thread(self):
             time.sleep(2)
 
-            queue=ReplayQueue(self.debug)
+            queue=ReplayQueue(self.debug, self.queuePriority)
             self.queueLength=queue.length
 
             while self.keepgoing:
