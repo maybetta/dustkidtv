@@ -82,7 +82,7 @@ class Window(Frame):
             conf = json.load(f)
 
         self.debug = conf['debug']
-        self.chatbot = conf['chatbot'] # twitch chatbot integration
+        self.chatbot = conf['chatbot']  # twitch chatbot integration
         self.queuePriority = {
             "PB_PRIORITY": conf["PB_PRIORITY"],
             "APPLES_PRIORITY": conf["APPLES_PRIORITY"],  # per apple hit :)
@@ -132,16 +132,16 @@ class Window(Frame):
 
         while self.keepgoing:
 
-                    # get next replay on the list
-                    if self.chatbot:
-                        # check chat requests
-                        if False:
-                            # get next chat request
-                            pass
-                        else:
-                            rep=queue.next()
-                    else:
-                        rep=queue.next()
+            # get next replay on the list
+            if self.chatbot:
+                # check chat requests
+                if False:
+                    # get next chat request
+                    pass
+                else:
+                    rep = queue.next()
+            else:
+                rep = queue.next()
 
             self.replayId = rep.replayId
             self.timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rep.timestamp))
@@ -187,8 +187,8 @@ class Window(Frame):
 
             # update replay info
             self.replay_text.set(self.infoText % (
-            self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse,
-            self.deaths, self.realTime, self.queueLength))
+                self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse,
+                self.deaths, self.realTime, self.queueLength))
 
             # show replay
             rep.openReplay(rep.replayPath)
