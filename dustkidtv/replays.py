@@ -75,11 +75,9 @@ class ReplayQueue:
         return replayFrame
 
     def computeReplayWeight(self, rpl):
-        # These values are pulled out of my ass so feel free to tweak everything.
-        # I'm just trying to think about all the possible things we might want to take in account
-
         try:
             # Fast replay good up to RANK_PRIORITY
+            # this also priorities customs as a side effect
             factor = min([rpl['rank_all_score'], rpl['rank_all_time'], self.queuePriority['RANK_PRIORITY']])
             # PB good
             if rpl['pb']:
@@ -87,8 +85,8 @@ class ReplayQueue:
             # apples good
             if rpl['apples']:
                 factor /= (self.queuePriority['APPLES_PRIORITY'] * rpl['apples'])
-            # consite good
-            if rpl['level'] == 'boxes':
+            # consite any% good
+            if rpl['level'] == 'boxes' and rpl['time']<2000:
                 factor /= self.queuePriority['CONSITE_PRIORITY']
 
         except TypeError:

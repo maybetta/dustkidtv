@@ -1,0 +1,7 @@
+{
+"server": "irc.twitch.tv",
+"port": 6667,
+"nickname": "dustkidtv",
+"token": "",
+"channel": "#dustkidtv"
+}
