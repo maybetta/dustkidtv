@@ -1,5 +1,5 @@
 import certifi
-from urllib.request import urlopen, urlretrieve
+from urllib.request import urlopen
 from pandas import DataFrame, Series, concat
 from pandas import set_option as pandas_set_option
 from random import randrange
@@ -13,6 +13,7 @@ import os, sys, shutil
 import dustmaker
 import numpy as np
 from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
+from shutil import copyfileobj
 
 TILE_WIDTH = 48
 START_DELAY = 1112
@@ -20,32 +21,37 @@ DEATH_DELAY = 1000
 
 
 def isDst(time, timezone="America/Los_Angeles"):
-    timezone=pytz.timezone(timezone)
-    localTime=timezone.localize(time, is_dst=None)
-    return localTime.dst!=datetime.timedelta(0,0)
+    timezone = pytz.timezone(timezone)
+    localTime = timezone.localize(time, is_dst=None)
+    return localTime.dst != datetime.timedelta(0, 0)
+
 
 if isDst(datetime.datetime.utcnow()):
-    CHANGE_DAILY_TIME=datetime.time(hour=4, tzinfo=datetime.timezone.utc)
+    CHANGE_DAILY_TIME = datetime.time(hour=4, tzinfo=datetime.timezone.utc)
 else:
-    CHANGE_DAILY_TIME=datetime.time(hour=5, tzinfo=datetime.timezone.utc)
-
-
+    CHANGE_DAILY_TIME = datetime.time(hour=5, tzinfo=datetime.timezone.utc)
 
 pandas_set_option('display.max_rows', None)
 pandas_set_option('display.max_columns', None)
+
+
+def urlretrieve_with_cert(url: str, path: str, param: str = None):
+    combined_url = f"{url}{param}" if param else f"{url}"
+    with urlopen(combined_url, cafile=certifi.where()) as in_stream, open(path, 'wb') as out_file:
+        copyfileobj(in_stream, out_file)
 
 
 class InvalidReplay(Exception):
     pass
 
 
-
 class ReplayQueue:
     maxHistoryLength = 50
     maxQueueLength = 100
 
-    def findNewReplays(self, onlyValid = True):
-        dustkidPage = urlopen("https://dustkid.com/")
+    def findNewReplays(self, onlyValid=True):
+        print(certifi.where())
+        dustkidPage = urlopen("https://dustkid.com/", cafile=certifi.where())
         content = dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
         markerStart = "init_replays = ["
@@ -124,7 +130,7 @@ class ReplayQueue:
         # remove elements already in queue
         self.queue.drop_duplicates(subset='replay_id', ignore_index=True, inplace=True)
 
-        #remove old daily replays
+        # remove old daily replays
         self.cleanDaily()
 
         queueLength = len(self.queue)
@@ -136,12 +142,12 @@ class ReplayQueue:
         self.queueId = self.getReplayId()
 
     def cleanDaily(self):
-        today=datetime.datetime.utcnow().date()
-        dailyTime=datetime.datetime.combine(today, CHANGE_DAILY_TIME).timestamp()
+        today = datetime.datetime.utcnow().date()
+        dailyTime = datetime.datetime.combine(today, CHANGE_DAILY_TIME).timestamp()
 
-        oldDaily=(self.queue['timestamp']<dailyTime) & (Series([bool(re.fullmatch('random\d+', level)) for level in self.queue['level']])) #select old dailies replays
+        oldDaily = (self.queue['timestamp'] < dailyTime) & (Series(
+            [bool(re.fullmatch('random\d+', level)) for level in self.queue['level']]))  # select old dailies replays
         self.queue.drop(self.queue[oldDaily].index, inplace=True)
-
 
     def update(self, id):
         self.updateHistory(id)
@@ -169,7 +175,7 @@ class ReplayQueue:
                 logfile.write('\n')
                 logfile.write('Replays played: %5i\t Replays in queue: %3i\n' % (self.counter, self.length))
                 logfile.write('New rep played: %5i\t Old rep played: %5i\n' % (
-                self.counter - self.backupCounter, self.backupCounter))
+                    self.counter - self.backupCounter, self.backupCounter))
 
                 if self.debug > 1:
                     logfile.write('\nQueue:\n')
@@ -179,8 +185,10 @@ class ReplayQueue:
                     logfile.write(str(self.history) + '\n')
                     logfile.write('\n')
 
-                logfile.write('Current replay: %i\t Timestamp: %s UTC\n' % (self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
-                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n' % (self.current.level, self.current.username, self.current.time / 1000.))
+                logfile.write('Current replay: %i\t Timestamp: %s UTC\n' % (
+                    self.current.replayId, time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(self.current.timestamp))))
+                logfile.write('Level: %s\t Player: %s\t Time: %.3f s\n' % (
+                    self.current.level, self.current.username, self.current.time / 1000.))
                 logfile.write('\n')
 
         return (self.current)
@@ -223,14 +231,14 @@ class Replay:
         path = 'dfreplays/' + str(self.replayId) + '.dfreplay'
         if os.path.isfile(path):
             return path
-        urlretrieve("https://dustkid.com/backend8/get_replay.php?replay=" + str(self.replayId), path)
+        urlretrieve_with_cert("https://dustkid.com/backend8/get_replay.php?replay=", path, str(self.replayId))
         return path
 
     def getReplayUri(self):
         return "dustforce://replay/" + str(self.replayId)
 
     def getReplayPage(self):
-        return "https://dustkid.com/replayviewer.php?replay_id=" + str(self.replayId) + "&json=true&metaonly"
+        return f"https://dustkid.com/replayviewer.php?replay_id={str(self.replayId)}" + "&json=true&metaonly"
 
     def loadMetadataFromJson(self, replayJson):
         metadata = json.loads(replayJson)
@@ -336,7 +344,10 @@ class Replay:
         estimatedCoords2[1:] = coords[:-1] + velocity[1:] * (deltat).reshape((nframes - 1, 1))
 
         estimatedBox = np.c_[
-            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1], estimatedCoords2[:, 1]), np.maximum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:, 1])]  # box boundary defined as [[x1, y1, x2, y2]]
+            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1],
+                                                                                  estimatedCoords2[:, 1]), np.maximum(
+                estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:,
+                                                                                                  1])]  # box boundary defined as [[x1, y1, x2, y2]]
 
         err = np.zeros(nframes, dtype=float)
         for frame in range(nframes):
@@ -428,24 +439,23 @@ class Level:
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s\n" % id)
-
-        urlretrieve("http://atlas.dustforce.com/gi/downloader.php?id=%s" % id, path)
+        urlretrieve_with_cert("http://atlas.dustforce.com/gi/downloader.php?id=", path, id)
 
         return path
 
     def downloadDaily(self):
-        path='dflevels/'+str(self.name) #this is in the format random-dddd
+        path = 'dflevels/' + str(self.name)  # this is in the format random-dddd
         if os.path.isfile(path) and self.dailyIsCurrent:
             return path
 
-        print('Downloading '+"https://dustkid.com/backend8/level.php?id=random")
+        print('Downloading ' + "https://dustkid.com/backend8/level.php?id=random")
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('Downloading '+"https://dustkid.com/backend8/level.php?id=random\n")
+                logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
+        urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", path)
 
-        urlretrieve("https://dustkid.com/backend8/level.php?id=random", path)
-        shutil.copyfile(path, self.levelPath) #daily name in df folder is always random (no counter appended)
-        self.dailyIsCurrent=True
+        shutil.copyfile(path, self.levelPath)  # daily name in df folder is always random (no counter appended)
+        self.dailyIsCurrent = True
 
         return path
 
@@ -481,14 +491,14 @@ class Level:
         self.debug = debug
 
         try:
-            self.dfPath=os.environ['DFPATH']
-            self.dfDailyPath=os.environ['DFDAILYPATH']
+            self.dfPath = os.environ['DFPATH']
+            self.dfDailyPath = os.environ['DFDAILYPATH']
 
         except KeyError:
             with open(configFile, 'r') as f:
-                conf=json.load(f)
-                self.dfPath=conf['path']
-                self.dfDailyPath=conf['user_path']
+                conf = json.load(f)
+                self.dfPath = conf['path']
+                self.dfDailyPath = conf['user_path']
 
         self.name = level
 
@@ -509,8 +519,8 @@ class Level:
             self.levelPath = 'dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail = False
         elif self.isDaily:
-            self.levelPath = self.dfDailyPath+"/user/levels/random"
-            dailyPath = 'dflevels/'+str(self.name)
+            self.levelPath = self.dfDailyPath + "/user/levels/random"
+            dailyPath = 'dflevels/' + str(self.name)
             self.hasThumbnail = True
             self.dailyIsCurrent = os.path.isfile(dailyPath)
             self.downloadDaily()

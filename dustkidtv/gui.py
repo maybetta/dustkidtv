@@ -10,44 +10,43 @@ from textwrap import wrap
 
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 
-THUMBNAIL_SIZE=(382, 182)
-ICON_SIZE=(32, 32)
-PAD=3
-MAX_TEXT_LEN=26
-BLACK=(0,0,0)
-WHITE=(255,255,255)
+THUMBNAIL_SIZE = (382, 182)
+ICON_SIZE = (32, 32)
+PAD = 3
+MAX_TEXT_LEN = 26
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 
-dustkidtvThumbnail='dustkidtv/assets/dustkidtv-tashizuna.png'
-srank='dustkidtv/assets/dfsrank.png'
-arank='dustkidtv/assets/dfarank.png'
-brank='dustkidtv/assets/dfbrank.png'
-crank='dustkidtv/assets/dfcrank.png'
-drank='dustkidtv/assets/dfdrank.png'
-apple='dustkidtv/assets/dfapple.png'
-star='dustkidtv/assets/dfstar.png'
-freesans="dustkidtv/assets/FreeSansBold.ttf"
+dustkidtvThumbnail = 'dustkidtv/assets/dustkidtv-tashizuna.png'
+srank = 'dustkidtv/assets/dfsrank.png'
+arank = 'dustkidtv/assets/dfarank.png'
+brank = 'dustkidtv/assets/dfbrank.png'
+crank = 'dustkidtv/assets/dfcrank.png'
+drank = 'dustkidtv/assets/dfdrank.png'
+apple = 'dustkidtv/assets/dfapple.png'
+star = 'dustkidtv/assets/dfstar.png'
+freesans = "dustkidtv/assets/FreeSansBold.ttf"
 
 
 class Window(Frame):
+    dustkidImg = Image.open(dustkidtvThumbnail)
+    thumbnail = dustkidImg.copy()
 
-    dustkidImg=Image.open(dustkidtvThumbnail)
-    thumbnail=dustkidImg.copy()
+    font = ImageFont.truetype(freesans, 20)
 
-    font=ImageFont.truetype(freesans, 20)
+    srankImg = Image.open(srank)
+    arankImg = Image.open(arank)
+    brankImg = Image.open(brank)
+    crankImg = Image.open(crank)
+    drankImg = Image.open(drank)
+    appleImg = Image.open(apple)
+    starImg = Image.open(star)
+    scores = [drankImg, crankImg, brankImg, arankImg, srankImg]
 
-    srankImg=Image.open(srank)
-    arankImg=Image.open(arank)
-    brankImg=Image.open(brank)
-    crankImg=Image.open(crank)
-    drankImg=Image.open(drank)
-    appleImg=Image.open(apple)
-    starImg=Image.open(star)
-    scores=[drankImg, crankImg, brankImg, arankImg, srankImg]
-
-    posLowRight2=(THUMBNAIL_SIZE[0]-ICON_SIZE[0]-PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
-    posLowRight1=(posLowRight2[0]-ICON_SIZE[0]-PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
-    posLowLeft1=(PAD, THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
-    posLowLeft2=(posLowLeft1[0]+PAD+ICON_SIZE[0], THUMBNAIL_SIZE[1]-ICON_SIZE[1]-PAD)
+    posLowRight2 = (THUMBNAIL_SIZE[0] - ICON_SIZE[0] - PAD, THUMBNAIL_SIZE[1] - ICON_SIZE[1] - PAD)
+    posLowRight1 = (posLowRight2[0] - ICON_SIZE[0] - PAD, THUMBNAIL_SIZE[1] - ICON_SIZE[1] - PAD)
+    posLowLeft1 = (PAD, THUMBNAIL_SIZE[1] - ICON_SIZE[1] - PAD)
+    posLowLeft2 = (posLowLeft1[0] + PAD + ICON_SIZE[0], THUMBNAIL_SIZE[1] - ICON_SIZE[1] - PAD)
 
     infoText = '''    Replay ID: %i
     Timestamp: %s
@@ -62,148 +61,145 @@ class Window(Frame):
     Queue length: %i
     '''
 
-    replayId=0
-    timestamp=''
-    username=''
-    levelname=''
-    time=0
-    completion=''
-    finesse=''
-    realTime=0
+    replayId = 0
+    timestamp = ''
+    username = ''
+    levelname = ''
+    time = 0
+    completion = ''
+    finesse = ''
+    realTime = 0
 
-    queueLength=0
+    queueLength = 0
 
-    keepgoing=False
+    keepgoing = False
 
-    replay_thread=None
-
+    replay_thread = None
 
     def readConfig(self, configFile='config.json'):
 
         with open(configFile, 'r') as f:
-            conf=json.load(f)
+            conf = json.load(f)
 
         self.debug = conf['debug']
-        self.chatbot = conf['chatbot'] # twitch chatbot integration
+        self.chatbot = conf['chatbot']  # twitch chatbot integration
         self.queuePriority = {
             "PB_PRIORITY": conf["PB_PRIORITY"],
-            "APPLES_PRIORITY": conf["APPLES_PRIORITY"], # per apple hit :)
-            "RANK_PRIORITY": conf["RANK_PRIORITY"], # prioritize up to this rank
-            "CONSITE_PRIORITY": conf["CONSITE_PRIORITY"] # consite good
-            }
+            "APPLES_PRIORITY": conf["APPLES_PRIORITY"],  # per apple hit :)
+            "RANK_PRIORITY": conf["RANK_PRIORITY"],  # prioritize up to this rank
+            "CONSITE_PRIORITY": conf["CONSITE_PRIORITY"]  # consite good
+        }
 
         try:
-            self.dfExePath=os.environ['DFEXE']
-            self.dfPath=os.environ['DFPATH']
-            self.dfDailyPath=os.environ['DFDAILYPATH']
+            self.dfExePath = os.environ['DFEXE']
+            self.dfPath = os.environ['DFPATH']
+            self.dfDailyPath = os.environ['DFDAILYPATH']
 
         except KeyError:
-            self.dfExePath=conf['dustmod']
-            self.dfPath=conf['path']
-            self.dfDailyPath=conf['user_path']
+            self.dfExePath = conf['dustmod']
+            self.dfPath = conf['path']
+            self.dfDailyPath = conf['user_path']
 
-            os.environ['DFEXE']=self.dfExePath
-            os.environ['DFPATH']=self.dfPath
-            os.environ['DFDAILYPATH']=self.dfDailyPath
-
+            os.environ['DFEXE'] = self.dfExePath
+            os.environ['DFPATH'] = self.dfPath
+            os.environ['DFDAILYPATH'] = self.dfDailyPath
 
     def stop(self):
-        self.keepgoing=False
+        self.keepgoing = False
         self.replay_text.set('Waiting for replay to end...')
 
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('DustkidTV stopped at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
-
+                logfile.write('DustkidTV stopped at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
 
     def run(self):
-        self.keepgoing=True
+        self.keepgoing = True
         self.replay_text.set('Starting Dustforce...')
 
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('DustkidTV started at %s UTC\n'%(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+                logfile.write('DustkidTV started at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
 
         if self.replay_thread is None:
-            self.replay_thread=threading.Thread(target=self.run_thread, daemon=True)
+            self.replay_thread = threading.Thread(target=self.run_thread, daemon=True)
             self.replay_thread.start()
 
-
     def run_thread(self):
-            time.sleep(2)
+        time.sleep(2)
 
-            queue=ReplayQueue(self.debug, self.queuePriority)
-            self.queueLength=queue.length
+        queue = ReplayQueue(self.debug, self.queuePriority)
+        self.queueLength = queue.length
 
-            while self.keepgoing:
+        while self.keepgoing:
 
-                    # get next replay on the list
-                    if self.chatbot:
-                        # check chat requests
-                        if False:
-                            # get next chat request
-                            pass
-                        else:
-                            rep=queue.next()
-                    else:
-                        rep=queue.next()
+            # get next replay on the list
+            if self.chatbot:
+                # check chat requests
+                if False:
+                    # get next chat request
+                    pass
+                else:
+                    rep = queue.next()
+            else:
+                rep = queue.next()
 
-                    self.replayId=rep.replayId
-                    self.timestamp=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rep.timestamp))
-                    self.username=rep.username
-                    self.levelname=rep.levelname
-                    self.time=rep.time/1000.
-                    self.completion=rep.completion
-                    self.finesse=rep.finesse
-                    self.deaths=rep.deaths
-                    self.realTime=rep.realTime
+            self.replayId = rep.replayId
+            self.timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(rep.timestamp))
+            self.username = rep.username
+            self.levelname = rep.levelname
+            self.time = rep.time / 1000.
+            self.completion = rep.completion
+            self.finesse = rep.finesse
+            self.deaths = rep.deaths
+            self.realTime = rep.realTime
 
-                    #update thumbnail
-                    if rep.thumbnail:
-                        img=Image.open(io.BytesIO(rep.thumbnail))
-                    else:
-                        img=self.dustkidImg.copy()
-                    rankCompletionImg=self.scores[rep.completionNum-1]
-                    rankFinesseImg=self.scores[rep.finesseNum-1]
+            # update thumbnail
+            if rep.thumbnail:
+                img = Image.open(io.BytesIO(rep.thumbnail))
+            else:
+                img = self.dustkidImg.copy()
+            rankCompletionImg = self.scores[rep.completionNum - 1]
+            rankFinesseImg = self.scores[rep.finesseNum - 1]
 
-                    img.paste(rankCompletionImg, self.posLowRight1, rankCompletionImg)
-                    img.paste(rankFinesseImg, self.posLowRight2, rankFinesseImg)
-                    if rep.apple and rep.isPB:
-                        img.paste(self.starImg, self.posLowLeft1, self.starImg)
-                        img.paste(self.appleImg, self.posLowLeft2, self.appleImg)
-                    elif rep.isPB:
-                        img.paste(self.starImg, self.posLowLeft1, self.starImg)
-                    elif rep.apple:
-                        img.paste(self.appleImg, self.posLowLeft1, self.appleImg)
+            img.paste(rankCompletionImg, self.posLowRight1, rankCompletionImg)
+            img.paste(rankFinesseImg, self.posLowRight2, rankFinesseImg)
+            if rep.apple and rep.isPB:
+                img.paste(self.starImg, self.posLowLeft1, self.starImg)
+                img.paste(self.appleImg, self.posLowLeft2, self.appleImg)
+            elif rep.isPB:
+                img.paste(self.starImg, self.posLowLeft1, self.starImg)
+            elif rep.apple:
+                img.paste(self.appleImg, self.posLowLeft1, self.appleImg)
 
-                    draw=ImageDraw.Draw(img)
-                    text='\n'.join(wrap(rep.levelname, MAX_TEXT_LEN))
-                    draw.multiline_text((PAD-1, PAD), text, font=self.font, fill=BLACK)
-                    draw.multiline_text((PAD+1, PAD), text, font=self.font, fill=BLACK)
-                    draw.multiline_text((PAD, PAD-1), text, font=self.font, fill=BLACK)
-                    draw.multiline_text((PAD, PAD+1), text, font=self.font, fill=BLACK)
-                    draw.multiline_text((PAD, PAD), text, font=self.font, fill=WHITE)
+            draw = ImageDraw.Draw(img)
+            text = '\n'.join(wrap(rep.levelname, MAX_TEXT_LEN))
+            draw.multiline_text((PAD - 1, PAD), text, font=self.font, fill=BLACK)
+            draw.multiline_text((PAD + 1, PAD), text, font=self.font, fill=BLACK)
+            draw.multiline_text((PAD, PAD - 1), text, font=self.font, fill=BLACK)
+            draw.multiline_text((PAD, PAD + 1), text, font=self.font, fill=BLACK)
+            draw.multiline_text((PAD, PAD), text, font=self.font, fill=WHITE)
 
-                    self.thumbnail=img
+            self.thumbnail = img
 
-                    photoTk = ImageTk.PhotoImage(self.thumbnail)
-                    self.image_label.configure(image=photoTk)
-                    self.image_label.image=photoTk
+            photoTk = ImageTk.PhotoImage(self.thumbnail)
+            self.image_label.configure(image=photoTk)
+            self.image_label.image = photoTk
 
-                    #update replay info
-                    self.replay_text.set(self.infoText%(self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse, self.deaths, self.realTime, self.queueLength))
+            # update replay info
+            self.replay_text.set(self.infoText % (
+                self.replayId, self.timestamp, self.username, self.levelname, self.time, self.completion, self.finesse,
+                self.deaths, self.realTime, self.queueLength))
 
-                    #show replay
-                    rep.openReplay(rep.replayPath)
-                    time.sleep(rep.realTime)
+            # show replay
+            rep.openReplay(rep.replayPath)
+            time.sleep(rep.realTime)
 
-                    #update queues
-                    queue.update(rep.replayId)
-                    self.queueLength=queue.length
+            # update queues
+            queue.update(rep.replayId)
+            self.queueLength = queue.length
 
-            self.replay_text.set('Thread Stopped')
-            self.replay_thread = None
-
+        self.replay_text.set('Thread Stopped')
+        self.replay_thread = None
 
     def __init__(self, master):
         self.readConfig()
@@ -222,8 +218,8 @@ class Window(Frame):
         left.grid(row=0, column=0, sticky=(N, E, S, W))
 
         photoTk = ImageTk.PhotoImage(self.thumbnail)
-        self.image_label=Label(left, image=photoTk)
-        self.image_label.image=photoTk
+        self.image_label = Label(left, image=photoTk)
+        self.image_label.image = photoTk
         self.image_label.pack(anchor=NW)
 
         self.replay_text = StringVar()
@@ -231,17 +227,16 @@ class Window(Frame):
         self.message = Message(left, textvariable=self.replay_text, justify=LEFT, width=THUMBNAIL_SIZE[0])
         self.message.pack(anchor=NW)
 
-        self.button=Button(left, text='Start', command=lambda: self.run())
+        self.button = Button(left, text='Start', command=lambda: self.run())
         self.button.pack(anchor=NW)
 
-        self.button=Button(left, text='Stop', command=lambda: self.stop())
+        self.button = Button(left, text='Stop', command=lambda: self.stop())
         self.button.pack(anchor=NW)
 
 
 def main():
+    root = Tk()
 
-    root=Tk()
-
-    window=Window(root)
+    window = Window(root)
 
     root.mainloop()
