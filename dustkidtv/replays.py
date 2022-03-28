@@ -50,7 +50,6 @@ class ReplayQueue:
     maxQueueLength = 100
 
     def findNewReplays(self, onlyValid=True):
-        print(certifi.where())
         dustkidPage = urlopen("https://dustkid.com/", cafile=certifi.where())
         content = dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
