@@ -4,16 +4,16 @@ from pandas import DataFrame, Series, concat
 from pandas import set_option as pandas_set_option
 from random import randrange
 from subprocess import Popen
+from shutil import copyfileobj, copyfile
 import time
 import pytz
 import datetime
 import json
 import re
-import os, sys, shutil
+import os, sys
 import dustmaker
 import numpy as np
 from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
-from shutil import copyfileobj
 
 TILE_WIDTH = 48
 START_DELAY = 1112
@@ -50,7 +50,6 @@ class ReplayQueue:
     maxQueueLength = 100
 
     def findNewReplays(self, onlyValid=True):
-        print(certifi.where())
         dustkidPage = urlopen("https://dustkid.com/", cafile=certifi.where())
         content = dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
@@ -145,8 +144,10 @@ class ReplayQueue:
         today = datetime.datetime.utcnow().date()
         dailyTime = datetime.datetime.combine(today, CHANGE_DAILY_TIME).timestamp()
 
-        oldDaily = (self.queue['timestamp'] < dailyTime) & (Series(
-            [bool(re.fullmatch('random\d+', level)) for level in self.queue['level']]))  # select old dailies replays
+        # select old dailies replays
+        dailys=[bool(re.fullmatch('random\d+', level)) for level in self.queue['level']]
+        olds=(self.queue['timestamp'] < dailyTime)
+        oldDaily = (olds) & (dailys)
         self.queue.drop(self.queue[oldDaily].index, inplace=True)
 
     def update(self, id):
@@ -344,10 +345,11 @@ class Replay:
         estimatedCoords2[1:] = coords[:-1] + velocity[1:] * (deltat).reshape((nframes - 1, 1))
 
         estimatedBox = np.c_[
-            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.minimum(estimatedCoords[:, 1],
-                                                                                  estimatedCoords2[:, 1]), np.maximum(
-                estimatedCoords[:, 0], estimatedCoords2[:, 0]), np.maximum(estimatedCoords[:, 1], estimatedCoords2[:,
-                                                                                                  1])]  # box boundary defined as [[x1, y1, x2, y2]]
+            np.minimum(estimatedCoords[:, 0], estimatedCoords2[:, 0]),
+            np.minimum(estimatedCoords[:, 1], estimatedCoords2[:, 1]),
+            np.maximum(estimatedCoords[:, 0], estimatedCoords2[:, 0]),
+            np.maximum(estimatedCoords[:, 1], estimatedCoords2[:,1])
+        ]  # box boundary defined as [[x1, y1, x2, y2]]
 
         err = np.zeros(nframes, dtype=float)
         for frame in range(nframes):
@@ -439,6 +441,7 @@ class Level:
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s\n" % id)
+
         urlretrieve_with_cert("http://atlas.dustforce.com/gi/downloader.php?id=", path, id)
 
         return path
@@ -452,9 +455,10 @@ class Level:
         if self.debug:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
+
         urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", path)
 
-        shutil.copyfile(path, self.levelPath)  # daily name in df folder is always random (no counter appended)
+        copyfile(path, self.levelPath)  # daily name in df folder is always random (no counter appended)
         self.dailyIsCurrent = True
 
         return path
