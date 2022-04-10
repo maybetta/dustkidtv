@@ -5,6 +5,7 @@ from pandas import set_option as pandas_set_option
 from random import randrange
 from subprocess import Popen
 from shutil import copyfileobj, copyfile
+from threading import Event
 import time
 import pytz
 import datetime
@@ -249,9 +250,8 @@ class Replay:
         replayPage = urlopen(self.getReplayPage())
         content = replayPage.read().decode(replayPage.headers.get_content_charset())
 
-        # TODO not really a good check
         if 'Could not find replay' in content:
-            raise ValueError
+            raise InvalidReplay
 
         else:
             metadata = json.loads(content)
@@ -427,6 +427,8 @@ class Replay:
         else:
             self.deaths = self.estimateDeaths()
         self.realTime = (self.time + START_DELAY + self.deaths * DEATH_DELAY) / 1000.
+
+        self.skip = Event()
 
 
 class Level:

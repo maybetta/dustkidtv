@@ -9,6 +9,7 @@ from PIL import Image, ImageTk, ImageDraw, ImageFont
 from textwrap import wrap
 
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
+from dustkidtv.chatbot import TwitchReader, Chatbot
 
 THUMBNAIL_SIZE = (382, 182)
 ICON_SIZE = (32, 32)
@@ -72,9 +73,11 @@ class Window(Frame):
 
     queueLength = 0
 
-    keepgoing = False
+    tvIsActive = False
+    chatbotIsActive = False
 
     replay_thread = None
+    chatbot_thread = None
 
     def readConfig(self, configFile='config.json'):
 
@@ -83,6 +86,8 @@ class Window(Frame):
 
         self.debug = conf['debug']
         self.chatbot = conf['chatbot']  # twitch chatbot integration
+        if self.chatbot:
+            self.chatbot_config = conf['chatbot_config']
         self.queuePriority = {
             "PB_PRIORITY": conf["PB_PRIORITY"],
             "APPLES_PRIORITY": conf["APPLES_PRIORITY"],  # per apple hit :)
@@ -104,16 +109,8 @@ class Window(Frame):
             os.environ['DFPATH'] = self.dfPath
             os.environ['DFDAILYPATH'] = self.dfDailyPath
 
-    def stop(self):
-        self.keepgoing = False
-        self.replay_text.set('Waiting for replay to end...')
-
-        if self.debug:
-            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('DustkidTV stopped at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
-
     def run(self):
-        self.keepgoing = True
+        self.tvIsActive = True
         self.replay_text.set('Starting Dustforce...')
 
         if self.debug:
@@ -124,22 +121,74 @@ class Window(Frame):
             self.replay_thread = threading.Thread(target=self.run_thread, daemon=True)
             self.replay_thread.start()
 
+    def stop(self):
+        self.tvIsActive = False
+        self.replay_text.set('Waiting for replay to end...')
+
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('DustkidTV stopped at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+
+    def runRequests(self):
+        self.chatbotIsActive = True
+
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Chatbot started at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+
+        if self.chatbot_thread is None:
+            self.chatbot_thread = threading.Thread(target=self.run_chatbot, daemon=True)
+            self.chatbot_thread.start()
+
+    def stopRequests(self):
+        self.chatbotIsActive = False
+
+        self.reader.stop()
+        self.handler.stop()
+        #TODO send message to make it end sooner
+        self.reader.join()
+        self.handler.join()
+
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Chatbot stopped at %s UTC\n' % (time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())))
+
+    def run_chatbot(self):
+        self.reader = TwitchReader(config_file=self.chatbot_config)
+        self.handler = Chatbot()
+        self.reader.handler = self.handler
+        self.handler.start()
+        self.reader.start()
+
     def run_thread(self):
         time.sleep(2)
 
         queue = ReplayQueue(self.debug, self.queuePriority)
         self.queueLength = queue.length
 
-        while self.keepgoing:
+        while self.tvIsActive:
 
             # get next replay on the list
-            if self.chatbot:
+            if self.chatbotIsActive:
+
                 # check chat requests
-                if False:
+                foundValidRequest = False
+                while (self.handler.replayRequestsCounter > 0):
                     # get next chat request
-                    pass
-                else:
+                    id = self.handler.replayRequests.pop(0)
+                    self.handler.replayRequestsCounter -= 1
+                    try:
+                        rep = Replay(replayId = id)
+                        self.handler.setReplay(rep)
+                        foundValidRequest = True
+                        break
+                    except InvalidReplay:
+                        continue
+
+                #if no requests or invalid requests, continue with main queue
+                if not foundValidRequest:
                     rep = queue.next()
+                    self.handler.setReplay(rep)
             else:
                 rep = queue.next()
 
@@ -192,7 +241,8 @@ class Window(Frame):
 
             # show replay
             rep.openReplay(rep.replayPath)
-            time.sleep(rep.realTime)
+            while not rep.skip.is_set() and rep.skip.wait(rep.realTime):
+                continue
 
             # update queues
             queue.update(rep.replayId)
@@ -203,9 +253,6 @@ class Window(Frame):
 
     def __init__(self, master):
         self.readConfig()
-
-        if self.chatbot:
-            import dustkidtv.chatbot as bot
 
         Frame.__init__(self, master)
         self.master = master
@@ -232,6 +279,13 @@ class Window(Frame):
 
         self.button = Button(left, text='Stop', command=lambda: self.stop())
         self.button.pack(anchor=NW)
+
+        if self.chatbot:
+            self.button = Button(left, text='Start requests', command=lambda: self.runRequests())
+            self.button.pack(anchor=NW)
+
+            self.button = Button(left, text='Stop requests', command=lambda: self.stopRequests())
+            self.button.pack(anchor=NW)
 
 
 def main():
