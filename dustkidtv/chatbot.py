@@ -40,11 +40,12 @@ class TwitchReader(threading.Thread):
             'port': 0,
             'nickname': '',
             'token': '',
-            'channel': ''
+            'channel': '',
+            "debug" : false
         }
         self.load_config(filename=config_file)
 
-        self.debug_output = False
+        self.debug = self._config["debug"]
         self.handler = None
         self.running = False
 
@@ -61,16 +62,25 @@ class TwitchReader(threading.Thread):
 
     def run(self):
         print('Connecting to Twitch')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Connecting to Twitch\n')
+
         sock = socket.socket()
         if self.handler is not None:
             self.handler.socket = sock
             self.handler.channel = self._config["channel"]
+            self.handler.debug = self._config["debug"]
         sock.connect((self._config['server'], self._config['port']))
         sock.send(f'PASS {self._config["token"]}\n'.encode('utf-8'))
         sock.send(f'NICK {self._config["nickname"]}\n'.encode('utf-8'))
         sock.send(f'JOIN {self._config["channel"]}\n'.encode('utf-8'))
 
         print('Entering Chat loop')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Entering Chat loop\n')
+
         self.running = True
         while self.running:
             resp = sock.recv(2048).decode('utf-8')
@@ -82,9 +92,14 @@ class TwitchReader(threading.Thread):
                     username, message = decode(resp)
                     self.handler.receive(username, message)
                     # sock.send(f'PRIVMSG {self._config["channel"]} :received message\n'.encode('utf-8'))
-            if self.debug_output:
+            if self.debug:
                 print(resp)
+
         print('Closing socket')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Closing socket\n')
+
         sock.close()
 
 
@@ -92,6 +107,8 @@ class Chatbot(threading.Thread):
     def __init__(self, name="Chatbot", replay=None):
         threading.Thread.__init__(self)
         self.name = name
+
+        self.debug = False
 
         self.socket = None
         self.channel = None
@@ -125,6 +142,9 @@ class Chatbot(threading.Thread):
 
     def run(self):
         print('Handler Starting!')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Handler Starting!\n')
 
         self.running = True
 
@@ -142,6 +162,9 @@ class Chatbot(threading.Thread):
                         id = parseId(message)
                         if id is not None:
                             print('adding ID %i to replay requests' % id)
+                            if self.debug:
+                                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                                    logfile.write('adding ID %i to replay requests\n' % id)
                             self.replayRequests.append(id)
                             self.replayRequestsCounter += 1
                             self.say(f'@{username} requested replay ID {id} (#{self.replayRequestsCounter} in queue)\n')
@@ -150,12 +173,18 @@ class Chatbot(threading.Thread):
 
                 elif message == '!skip':
                     print('skip request received')
+                    if self.debug:
+                        with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                            logfile.write('skip request received\n')
                     if self.currentReplay is not None:
                         self.currentReplay.skip.set()
                         self.say(f'@{username} requested replay skip\n')
 
                 elif message == '!info' or message == '!replay' or message == '!map' or message == '!level':
                     print('info request received')
+                    if self.debug:
+                        with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                            logfile.write('info request received')
                     if self.currentReplay is not None:
                         self.say(f'@{username} the current replay is {self.currentReplay.levelname} by {self.currentReplay.username}, score {self.currentReplay.completion}{self.currentReplay.finesse}, time {self.currentReplay.time/1000.}s {self.currentReplay.getReplayPage()}\n')
 
@@ -166,3 +195,6 @@ class Chatbot(threading.Thread):
             # release the lock so that other messages can be queued while current ones are read
 
         print('Handler stopping')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Handler stopping\n')
