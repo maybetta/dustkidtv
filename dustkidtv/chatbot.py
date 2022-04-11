@@ -146,7 +146,7 @@ class Chatbot(threading.Thread):
                             self.replayRequestsCounter += 1
                             self.say(f'@{username} requested replay ID {id} (#{self.replayRequestsCounter} in queue)\n')
                         else:
-                            self.say(f'@{username} invalid replay ID: to request a replay, use !replay followed by the dustkid ID\n')
+                            self.say(f'@{username} invalid replay ID: to request a replay, use !request followed by the dustkid ID\n')
 
                 elif message == '!skip':
                     print('skip request received')
