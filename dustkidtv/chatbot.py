@@ -5,6 +5,7 @@ import threading
 from emoji import demojize
 
 DEFAULT_TWITCH_FILE = 'twitch_config.json'
+MAX_REPLAY_REQUESTS = 10
 
 def decode(message):
     message = demojize(message).replace('\r', '')
@@ -61,6 +62,9 @@ class TwitchReader(threading.Thread):
     def run(self):
         print('Connecting to Twitch')
         sock = socket.socket()
+        if self.handler is not None:
+            self.handler.socket = sock
+            self.handler.channel = self._config["channel"]
         sock.connect((self._config['server'], self._config['port']))
         sock.send(f'PASS {self._config["token"]}\n'.encode('utf-8'))
         sock.send(f'NICK {self._config["nickname"]}\n'.encode('utf-8'))
@@ -88,6 +92,9 @@ class Chatbot(threading.Thread):
     def __init__(self, name="Chatbot", replay=None):
         threading.Thread.__init__(self)
         self.name = name
+
+        self.socket = None
+        self.channel = None
         self.message_queue = []
         self.message_condition = threading.Condition()
         self.running = False
@@ -113,6 +120,9 @@ class Chatbot(threading.Thread):
         self.message_condition.notify()
         self.message_condition.release()
 
+    def say(self, message):
+        self.socket.send(f'PRIVMSG {self.channel} :{message}'.encode('utf-8'))
+
     def run(self):
         print('Handler Starting!')
 
@@ -126,22 +136,28 @@ class Chatbot(threading.Thread):
             for username, message in self.message_queue:
 
                 if message.startswith('!request ') or message.startswith('!rq '):
-                    id = parseId(message)
-                    if id is not None:
-                        print('adding ID %i to replay requests' % id)
-                        self.replayRequests.append(id)
-                        self.replayRequestsCounter += 1
+                    if self.replayRequestsCounter > MAX_REPLAY_REQUESTS:
+                        self.say(f'@{username} maximum number of replay requests reached, please try again later ({self.replayRequestsCounter} replays in queue)\n')
+                    else:
+                        id = parseId(message)
+                        if id is not None:
+                            print('adding ID %i to replay requests' % id)
+                            self.replayRequests.append(id)
+                            self.replayRequestsCounter += 1
+                            self.say(f'@{username} requested replay ID {id} (#{self.replayRequestsCounter} in queue)\n')
+                        else:
+                            self.say(f'@{username} invalid replay ID: to request a replay, use !replay followed by the dustkid ID\n')
 
                 elif message == '!skip':
                     print('skip request received')
                     if self.currentReplay is not None:
                         self.currentReplay.skip.set()
+                        self.say(f'@{username} requested replay skip\n')
 
                 elif message == '!info' or message == '!replay' or message == '!map' or message == '!level':
                     print('info request received')
                     if self.currentReplay is not None:
-                        #TODO send message to chat with current replay info
-                        pass
+                        self.say(f'@{username} the current replay is {self.currentReplay.levelname} by {self.currentReplay.username}, score {self.currentReplay.completion}{self.currentReplay.finesse}, time {self.currentReplay.time/1000.}s {self.currentReplay.getReplayPage()}\n')
 
 
             self.message_queue.clear()

@@ -143,9 +143,11 @@ class Window(Frame):
     def stopRequests(self):
         self.chatbotIsActive = False
 
+        self.handler.say('Replay requests are closed')
+
         self.reader.stop()
         self.handler.stop()
-        #TODO send message to make it end sooner
+
         self.reader.join()
         self.handler.join()
 
@@ -170,7 +172,7 @@ class Window(Frame):
 
             # get next replay on the list
             if self.chatbotIsActive:
-
+                
                 # check chat requests
                 foundValidRequest = False
                 while (self.handler.replayRequestsCounter > 0):
@@ -183,6 +185,7 @@ class Window(Frame):
                         foundValidRequest = True
                         break
                     except InvalidReplay:
+                        self.handler.say(f'Requested replay {id} is invalid, skipping\n')
                         continue
 
                 #if no requests or invalid requests, continue with main queue

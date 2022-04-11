@@ -239,15 +239,18 @@ class Replay:
     def getReplayUri(self):
         return "dustforce://replay/" + str(self.replayId)
 
-    def getReplayPage(self):
+    def getReplayJson(self):
         return f"https://dustkid.com/replayviewer.php?replay_id={str(self.replayId)}" + "&json=true&metaonly"
+
+    def getReplayPage(self):
+        return "https://dustkid.com/replay/" + str(self.replayId)
 
     def loadMetadataFromJson(self, replayJson):
         metadata = json.loads(replayJson)
         return metadata
 
     def loadMetadataFromPage(self, id):
-        replayPage = urlopen(self.getReplayPage())
+        replayPage = urlopen(self.getReplayJson())
         content = replayPage.read().decode(replayPage.headers.get_content_charset())
 
         if 'Could not find replay' in content:

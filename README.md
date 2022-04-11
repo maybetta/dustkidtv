@@ -13,6 +13,7 @@ numpy
 pandas
 dustmaker
 certifi
+emoji
 ```
 
 Install them with `pip install -r requirements.txt` any other preferred method (note that [Dustmaker](https://github.com/msg555/dustmaker) needs to be version >= 1.1.1).
