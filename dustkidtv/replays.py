@@ -14,7 +14,7 @@ import re
 import os, sys
 import dustmaker
 import numpy as np
-from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON
+from dustkidtv.maps import STOCK_MAPS, CMP_MAPS, MAPS_WITH_THUMBNAIL, MAPS_WITH_ICON, BANNED_MAPS
 
 TILE_WIDTH = 48
 START_DELAY = 1112
@@ -132,6 +132,10 @@ class ReplayQueue:
 
         # remove old daily replays
         self.cleanDaily()
+
+        # remove banned maps
+        for map in BANNED_MAPS:
+            self.queue.drop(self.queue[self.queue['level'] == map].index, inplace=True)
 
         queueLength = len(self.queue)
         if queueLength > self.maxQueueLength:

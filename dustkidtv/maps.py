@@ -326,3 +326,7 @@ MAPS_WITH_ICON=[
 'yottadifficult',
 'zettadifficult',
 ]
+
+BANNED_MAPS=[
+'One-Shot-10941',
+]

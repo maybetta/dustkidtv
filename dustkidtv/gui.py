@@ -10,6 +10,7 @@ from textwrap import wrap
 
 from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
 from dustkidtv.chatbot import TwitchReader, Chatbot
+from dustkidtv.maps import BANNED_MAPS
 
 THUMBNAIL_SIZE = (382, 182)
 ICON_SIZE = (32, 32)
@@ -143,7 +144,7 @@ class Window(Frame):
     def stopRequests(self):
         self.chatbotIsActive = False
 
-        self.handler.say('Replay requests are closed')
+        self.handler.say('Replay requests are closed\n')
 
         self.reader.stop()
         self.handler.stop()
@@ -172,7 +173,7 @@ class Window(Frame):
 
             # get next replay on the list
             if self.chatbotIsActive:
-                
+
                 # check chat requests
                 foundValidRequest = False
                 while (self.handler.replayRequestsCounter > 0):
@@ -181,6 +182,12 @@ class Window(Frame):
                     self.handler.replayRequestsCounter -= 1
                     try:
                         rep = Replay(replayId = id)
+
+                        # check if the request is a banned map
+                        for map in BANNED_MAPS:
+                            if rep.level == map:
+                                raise InvalidReplay
+
                         self.handler.setReplay(rep)
                         foundValidRequest = True
                         break
@@ -188,7 +195,7 @@ class Window(Frame):
                         self.handler.say(f'Requested replay {id} is invalid, skipping\n')
                         continue
 
-                #if no requests or invalid requests, continue with main queue
+                # if no requests or invalid requests, continue with main queue
                 if not foundValidRequest:
                     rep = queue.next()
                     self.handler.setReplay(rep)
