@@ -44,6 +44,8 @@ def urlretrieve_with_cert(url: str, path: str, param: str = None):
 
 class InvalidReplay(Exception):
     pass
+class BannedReplay(Exception):
+    pass
 
 
 class ReplayQueue:
@@ -130,6 +132,9 @@ class ReplayQueue:
         # remove elements already in queue
         self.queue.drop_duplicates(subset='replay_id', ignore_index=True, inplace=True)
 
+        # remove double replays
+        self.cleanPBs()
+
         # remove old daily replays
         self.cleanDaily()
 
@@ -144,6 +149,26 @@ class ReplayQueue:
         self.length = len(self.queue)
         self.sortReplays()
         self.queueId = self.getReplayId()
+
+    def cleanPBs(self):
+        # PBs are submitted twice, once as positive replay_id and once as negative (dustkid) replay_id.
+        # They can't be detected by same username/level/time plus timestamp because they have different timestamps.
+        # Therefore, if a user has both positive and negative replay_id for frametied replays of the same level,
+        # I drop all positive replay_id since there will be a duplicate with negative replay_id in the queue anyway.
+
+        # remove previously found duplicates
+        for id in self.duplicatesHistory:
+            self.queue.drop(self.queue[self.queue['replay_id'] == id].index, inplace=True)
+
+        dup = self.queue.duplicated(keep=False, subset=['username', 'level', 'time'])
+        positiveIds = self.queue[dup][self.queue[dup]['replay_id'] > 0]
+        self.queue.drop(positiveIds.index, inplace=True)
+
+        # update duplicates history
+        self.duplicatesHistory = self.duplicatesHistory + positiveIds['replay_id'].to_list()
+        if len(self.duplicatesHistory) > self.maxHistoryLength:
+            self.duplicatesHistory.pop(0)
+
 
     def cleanDaily(self):
         today = datetime.datetime.utcnow().date()
@@ -203,6 +228,7 @@ class ReplayQueue:
         self.debug = debug
         self.queuePriority = priority
         self.history = []
+        self.duplicatesHistory = []
         self.counter = 0
         self.queue = self.findNewReplays()
         self.length = len(self.queue)

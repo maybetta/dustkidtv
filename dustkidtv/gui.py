@@ -8,7 +8,7 @@ from tkinter import Tk, Frame, Button, Label, Message, StringVar, BOTH, LEFT, NW
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from textwrap import wrap
 
-from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay
+from dustkidtv.replays import ReplayQueue, Replay, InvalidReplay, BannedReplay
 from dustkidtv.chatbot import TwitchReader, Chatbot
 from dustkidtv.maps import BANNED_MAPS
 
@@ -186,13 +186,16 @@ class Window(Frame):
                         # check if the request is a banned map
                         for map in BANNED_MAPS:
                             if rep.level == map:
-                                raise InvalidReplay
+                                raise BannedReplay
 
                         self.handler.setReplay(rep)
                         foundValidRequest = True
                         break
                     except InvalidReplay:
                         self.handler.say(f'Requested replay {id} is invalid, skipping\n')
+                        continue
+                    except BannedReplay:
+                        self.handler.say(f'Requested replay {id} is banned, skipping\n')
                         continue
 
                 # if no requests or invalid requests, continue with main queue

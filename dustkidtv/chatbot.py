@@ -41,7 +41,7 @@ class TwitchReader(threading.Thread):
             'nickname': '',
             'token': '',
             'channel': '',
-            "debug" : false
+            "debug" : 0
         }
         self.load_config(filename=config_file)
 
@@ -92,7 +92,7 @@ class TwitchReader(threading.Thread):
                     username, message = decode(resp)
                     self.handler.receive(username, message)
                     # sock.send(f'PRIVMSG {self._config["channel"]} :received message\n'.encode('utf-8'))
-            if self.debug:
+            if self.debug > 1:
                 print(resp)
 
         print('Closing socket')
