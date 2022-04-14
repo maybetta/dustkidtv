@@ -187,7 +187,7 @@ class Chatbot(threading.Thread):
                     print('info request received')
                     if self.debug:
                         with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                            logfile.write('info request received')
+                            logfile.write('info request received\n')
                     if self.currentReplay is not None:
                         self.say(f'@{username} the current replay is {self.currentReplay.levelname} by {self.currentReplay.username}, score {self.currentReplay.completion}{self.currentReplay.finesse}, time {self.currentReplay.time/1000.}s {self.currentReplay.getReplayPage()}\n')
 
@@ -195,7 +195,7 @@ class Chatbot(threading.Thread):
                     print('daily download request received')
                     if self.debug:
                         with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                            logfile.write('daily download request received (%s)' % username)
+                            logfile.write('daily download request received (%s)\n' % username)
                     self.say(f'@{username} requested daily download\n')
                     dailyId = computeDailyId()
                     localPath = 'dflevels/random' + str(dailyId)

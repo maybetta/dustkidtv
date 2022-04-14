@@ -6,6 +6,7 @@ from random import randrange
 from subprocess import Popen
 from shutil import copyfileobj, copyfile
 from threading import Event
+from zlib import error as zlib_error
 import time
 import pytz
 import datetime
@@ -242,6 +243,15 @@ class ReplayQueue:
 class Replay:
 
     def openReplay(self, url):
+        if not self.isParsable:
+            print('The replay file could not be parsed')
+            if self.debug:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                    logfile.write('The replay file could not be parsed\n')
+
+            self.skip.set()
+            return
+
         try:
             if sys.platform == 'win32':
                 if not (url.startswith('http://') or url.startswith('https://')):
@@ -291,8 +301,14 @@ class Replay:
             return metadata
 
     def getReplayFrames(self):
+        size=os.path.getsize(self.replayPath)
         with dustmaker.DFReader(open(self.replayPath, "rb")) as reader:
-            replay = reader.read_replay()
+            try:
+                replay = reader.read_replay(known_length=size)
+            except zlib_error:
+                # replay file is probably corrupted
+                self.isParsable = False
+                return None
 
         entity_data = replay.get_player_entity_data()
         if entity_data is None:
@@ -426,6 +442,7 @@ class Replay:
 
         # download replay from dustkid
         self.replayPath = self.downloadReplay()
+        self.isParsable = True
 
         self.numplayers = metadata['numplayers']
 
