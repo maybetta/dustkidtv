@@ -160,6 +160,7 @@ class Window(Frame):
         self.reader = TwitchReader(config_file=self.chatbot_config)
         self.handler = Chatbot()
         self.reader.handler = self.handler
+        self.handler.dfDailyPath = self.dfDailyPath
         self.handler.start()
         self.reader.start()
 

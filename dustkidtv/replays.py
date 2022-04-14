@@ -464,6 +464,27 @@ class Replay:
         self.skip = Event()
 
 
+def computeDailyId():
+    firstDaily = datetime.date(year=2016, month=5, day=20)
+    now = datetime.datetime.utcnow()
+    today = now.date()
+    dailyTime = datetime.datetime.combine(today, CHANGE_DAILY_TIME)
+    dailyCounter = (today - firstDaily).days
+    if now.timestamp() < dailyTime.timestamp():
+        dailyCounter -= 1
+    return dailyCounter
+
+
+def downloadDaily(localpath, gamepath, debug=False):
+    print('Downloading ' + "https://dustkid.com/backend8/level.php?id=random")
+    if debug:
+        with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+            logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
+
+    urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", localpath)
+    copyfile(localpath, gamepath)
+
+
 class Level:
 
     def downloadLevel(self):
@@ -486,14 +507,16 @@ class Level:
         if os.path.isfile(path) and self.dailyIsCurrent:
             return path
 
-        print('Downloading ' + "https://dustkid.com/backend8/level.php?id=random")
-        if self.debug:
-            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-                logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
+        downloadDaily(path, self.levelPath, self.debug)
 
-        urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", path)
-
-        copyfile(path, self.levelPath)  # daily name in df folder is always random (no counter appended)
+        # print('Downloading ' + "https://dustkid.com/backend8/level.php?id=random")
+        # if self.debug:
+        #     with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+        #         logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
+        #
+        # urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", path)
+        #
+        # copyfile(path, self.levelPath)
         self.dailyIsCurrent = True
 
         return path
@@ -558,7 +581,7 @@ class Level:
             self.levelPath = 'dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail = False
         elif self.isDaily:
-            self.levelPath = self.dfDailyPath + "/user/levels/random"
+            self.levelPath = self.dfDailyPath + "/user/levels/random" # daily name in df folder is always random (no counter appended)
             dailyPath = 'dflevels/' + str(self.name)
             self.hasThumbnail = True
             self.dailyIsCurrent = os.path.isfile(dailyPath)

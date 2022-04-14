@@ -3,6 +3,8 @@ import socket
 import json
 import threading
 from emoji import demojize
+from dustkidtv.replays import downloadDaily, computeDailyId
+from dustkidtv.users import MODERATORS
 
 DEFAULT_TWITCH_FILE = 'twitch_config.json'
 MAX_REPLAY_REQUESTS = 10
@@ -109,6 +111,7 @@ class Chatbot(threading.Thread):
         self.name = name
 
         self.debug = False
+        self.dfDailyPath = None
 
         self.socket = None
         self.channel = None
@@ -187,6 +190,17 @@ class Chatbot(threading.Thread):
                             logfile.write('info request received')
                     if self.currentReplay is not None:
                         self.say(f'@{username} the current replay is {self.currentReplay.levelname} by {self.currentReplay.username}, score {self.currentReplay.completion}{self.currentReplay.finesse}, time {self.currentReplay.time/1000.}s {self.currentReplay.getReplayPage()}\n')
+
+                elif username.lower() in MODERATORS and message == '!daily':
+                    print('daily download request received')
+                    if self.debug:
+                        with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                            logfile.write('daily download request received (%s)' % username)
+                    self.say(f'@{username} requested daily download\n')
+                    dailyId = computeDailyId()
+                    localPath = 'dflevels/random' + str(dailyId)
+                    gamePath = self.dfDailyPath + "/user/levels/random"
+                    downloadDaily(localPath, gamePath, self.debug)
 
 
             self.message_queue.clear()
