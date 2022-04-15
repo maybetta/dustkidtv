@@ -1,5 +1,6 @@
 import certifi
 from urllib.request import urlopen
+from urllib.error import URLError
 from pandas import DataFrame, Series, concat
 from pandas import set_option as pandas_set_option
 from random import randrange
@@ -54,7 +55,15 @@ class ReplayQueue:
     maxQueueLength = 100
 
     def findNewReplays(self, onlyValid=True):
-        dustkidPage = urlopen("https://dustkid.com/", cafile=certifi.where())
+        try:
+            dustkidPage = urlopen("https://dustkid.com/", cafile=certifi.where())
+        except URLError:
+            print('could not reach dustkid.com')
+            if self.debug:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                    logfile.write('could not reach dustkid.com\n')
+            raise # nothing we can do if dustkid is down
+
         content = dustkidPage.read().decode(dustkidPage.headers.get_content_charset())
 
         markerStart = "init_replays = ["
@@ -273,7 +282,15 @@ class Replay:
         path = 'dfreplays/' + str(self.replayId) + '.dfreplay'
         if os.path.isfile(path):
             return path
-        urlretrieve_with_cert("https://dustkid.com/backend8/get_replay.php?replay=", path, str(self.replayId))
+        try:
+            urlretrieve_with_cert("https://dustkid.com/backend8/get_replay.php?replay=", path, str(self.replayId))
+        except URLError:
+            print('could not download replay')
+            if self.debug:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                    logfile.write('could not download replay\n')
+            self.skip.set()
+            return None
         return path
 
     def getReplayUri(self):
@@ -290,7 +307,15 @@ class Replay:
         return metadata
 
     def loadMetadataFromPage(self, id):
-        replayPage = urlopen(self.getReplayJson())
+        try:
+            replayPage = urlopen(self.getReplayJson())
+        except URLError:
+            print('could not reach dustkid.com')
+            if self.debug:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                    logfile.write('could not reach dustkid.com\n')
+            raise InvalidReplay
+
         content = replayPage.read().decode(replayPage.headers.get_content_charset())
 
         if 'Could not find replay' in content:
@@ -422,6 +447,8 @@ class Replay:
 
         self.debug = debug
 
+        self.skip = Event()
+
         if metadata is not None:
             self.replayId = metadata['replay_id']
         elif replayId is not None:
@@ -442,7 +469,10 @@ class Replay:
 
         # download replay from dustkid
         self.replayPath = self.downloadReplay()
-        self.isParsable = True
+        if self.replayPath:
+            self.isParsable = True
+        else:
+            self.isParsable = False
 
         self.numplayers = metadata['numplayers']
 
@@ -478,8 +508,6 @@ class Replay:
             self.deaths = self.estimateDeaths()
         self.realTime = (self.time + START_DELAY + self.deaths * DEATH_DELAY) / 1000.
 
-        self.skip = Event()
-
 
 def computeDailyId():
     firstDaily = datetime.date(year=2016, month=5, day=20)
@@ -498,7 +526,14 @@ def downloadDaily(localpath, gamepath, debug=False):
         with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
             logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
 
-    urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", localpath)
+    try:
+        urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", localpath)
+    except URLError:
+        print('could not download daily')
+        if self.debug:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('could not download daily\n')
+        raise # nothing we can do if daily can't be downloaded
     copyfile(localpath, gamepath)
 
 
@@ -515,7 +550,14 @@ class Level:
             with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
                 logfile.write('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s\n" % id)
 
-        urlretrieve_with_cert("http://atlas.dustforce.com/gi/downloader.php?id=", path, id)
+        try:
+            urlretrieve_with_cert("http://atlas.dustforce.com/gi/downloader.php?id=", path, id)
+        except URLError:
+            print('could not download map')
+            if self.debug:
+                with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                    logfile.write('could not download map\n')
+            return None
 
         return path
 
@@ -525,15 +567,6 @@ class Level:
             return path
 
         downloadDaily(path, self.levelPath, self.debug)
-
-        # print('Downloading ' + "https://dustkid.com/backend8/level.php?id=random")
-        # if self.debug:
-        #     with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
-        #         logfile.write('Downloading ' + "https://dustkid.com/backend8/level.php?id=random\n")
-        #
-        # urlretrieve_with_cert("https://dustkid.com/backend8/level.php?id=random", path)
-        #
-        # copyfile(path, self.levelPath)
         self.dailyIsCurrent = True
 
         return path
@@ -541,24 +574,27 @@ class Level:
     def getCheckpointsCoordinates(self):
         checkpoints = []
 
-        with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
-            levelFile = reader.read_level()
-            entities = levelFile.entities
+        if self.levelPath is not None:
+            with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
+                levelFile = reader.read_level()
+                entities = levelFile.entities
 
-            for entity in entities.values():
-                if isinstance(entity[2], dustmaker.entity.CheckPoint):
-                    checkpoints.append([entity[0], entity[1]])
+                for entity in entities.values():
+                    if isinstance(entity[2], dustmaker.entity.CheckPoint):
+                        checkpoints.append([entity[0], entity[1]])
 
         return np.array(checkpoints)
 
     def getThumbnail(self):
-
         if self.isStock:
             if self.hasLevelIcon:
                 imgPath = 'dustkidtv/assets/icons/%s.png' % self.name
                 with open(imgPath, 'rb') as f:
                     thumbnail = f.read()
                 return thumbnail
+
+        if self.levelPath is None:
+            return None
 
         with dustmaker.DFReader(open(self.levelPath, "rb")) as reader:
             level = reader.read_level()
@@ -605,4 +641,7 @@ class Level:
             self.downloadDaily()
         else:
             self.levelPath = self.downloadLevel()
-            self.hasThumbnail = True
+            if self.levelPath:
+                self.hasThumbnail = True
+            else:
+                self.hasThumbnail = False
