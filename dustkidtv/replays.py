@@ -626,6 +626,7 @@ class Level:
         self.isStock = level in STOCK_MAPS
         self.isCmp = level in CMP_MAPS
         self.isInfini = level == 'exec func ruin user'
+        self.isInfini = level == 'heatedsinner' # Twinkie's New Genesis hidden map
         self.isDaily = re.fullmatch('random\d+', level)
 
         if self.isStock:
@@ -639,6 +640,9 @@ class Level:
         elif self.isInfini:
             self.levelPath = 'dustkidtv/assets/infinidifficult_fixed'
             self.hasThumbnail = False
+        elif self.isHeatedsinner:
+            self.levelPath = 'dustkidtv/assets/heatedsinner'
+            self.hasThumbnail = True
         elif self.isDaily:
             self.levelPath = self.dfDailyPath + "/user/levels/random" # daily name in df folder is always random (no counter appended)
             dailyPath = 'dflevels/' + str(self.name)
