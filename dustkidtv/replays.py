@@ -172,6 +172,12 @@ class ReplayQueue:
 
         dup = self.queue.duplicated(keep=False, subset=['username', 'level', 'time'])
         positiveIds = self.queue[dup][self.queue[dup]['replay_id'] > 0]
+
+        if self.debug > 1:
+            with open('dustkidtv.log', 'a', encoding='utf-8') as logfile:
+                logfile.write('Removing duplicate replays:\n')
+                logfile.write(str(positiveIds))
+
         self.queue.drop(positiveIds.index, inplace=True)
 
         # update duplicates history
