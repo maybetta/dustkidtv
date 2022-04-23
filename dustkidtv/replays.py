@@ -626,7 +626,7 @@ class Level:
         self.isStock = level in STOCK_MAPS
         self.isCmp = level in CMP_MAPS
         self.isInfini = level == 'exec func ruin user'
-        self.isInfini = level == 'heatedsinner' # Twinkie's New Genesis hidden map https://dustkid.com/level/heatedsinner
+        self.isHeatedsinner = level == 'heatedsinner' # Twinkie's New Genesis hidden map https://dustkid.com/level/heatedsinner
         self.isDaily = re.fullmatch('random\d+', level)
 
         if self.isStock:
