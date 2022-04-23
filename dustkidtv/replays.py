@@ -508,7 +508,7 @@ class Replay:
             self.thumbnail = None
 
         # estimation of replay length in real time
-        if self.numplayers > 1 or not self.levelFile.levelPath:  # can't estimate deaths on dustkid daily
+        if self.numplayers > 1 or not self.levelFile.levelPath:  # can't estimate deaths on a level that has not been downloaded locally
             self.deaths = 0
         else:
             self.deaths = self.estimateDeaths()
@@ -549,7 +549,11 @@ class Level:
         path = 'dflevels/' + str(self.name)
         if os.path.isfile(path):
             return path
-        id = re.match('\d+', self.name[::-1]).group()[::-1]
+
+        idMatch = re.match('\d+', self.name[::-1]).group()
+        if idMatch is None:
+            return None
+        id = idMatch[::-1]
 
         print('Downloading ' + "http://atlas.dustforce.com/gi/downloader.php?id=%s" % id)
         if self.debug:

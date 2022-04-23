@@ -328,5 +328,6 @@ MAPS_WITH_ICON=[
 ]
 
 BANNED_MAPS=[
-'One-Shot-10941',
+'One-Shot-10941', # this map crashes dustmod
+'random', # this map has a bugged leaderboard that mixes replays of different levels
 ]
